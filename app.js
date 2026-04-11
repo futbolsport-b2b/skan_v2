@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSGj4O4qibyxi2cbSMaBLYKWDcEPgzhINviEb_ifj4l-SZWYxLlR6jdBi_YMDo9O-T/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYQge7WGusvbwZ77c0D-TYhbriJLvTll8xsCA_Z0BWXmXDcC1ifNOtYsrEWlCcEpjb/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
