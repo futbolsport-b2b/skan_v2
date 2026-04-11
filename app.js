@@ -118,7 +118,6 @@ async function initApp() {
     document.getElementById("image-zoom-overlay").style.display = "none";
     showView('view-user-selection');
     
-    // Nowoczesny Loader dla strony operatorów
     document.getElementById("user-list").innerHTML = `
         <div class="loader-container">
             <div class="modern-spinner"></div>
@@ -203,7 +202,10 @@ function startOrder(id, itemsCount) {
     document.getElementById("header-main-row").style.display = "flex";
     document.getElementById("order-val").innerText = id;
     document.getElementById("global-progress-bar").style.display = "block";
-    speakVoice("Ilość pozycji zamówienia " + itemsCount); 
+    
+    // ZMODYFIKOWANY KOMUNIKAT GŁOSOWY:
+    speakVoice("Ilość pozycji do uszykowania " + itemsCount); 
+    
     fetchNext(0);
 }
 
