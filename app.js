@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx2NOuufH3uIQR9zn5MYgg8Mf0guugyyYLGGMGapFdXjn2B8Vwac_7zv6FV7lJNxjBt/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw54rF2uN7rdP0eRfJz2VwD4pgt2alzof7CdUsPJkQlb4rHCmjQ7_jDYl941rO9a6yS/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -157,7 +157,6 @@ async function loadOrders() {
 
             const baton = document.createElement("div");
             baton.className = "order-baton";
-            // Zwracamy uwagę: onClick przekazuje też itemsCount do czytania
             baton.innerHTML = `
                 <div class="order-progress-fill" style="width:${o.progress}%; ${fillBg}"></div>
                 <div class="order-content">
@@ -178,7 +177,7 @@ function startOrder(id, itemsCount) {
     document.getElementById("header-main-row").style.display = "flex";
     document.getElementById("order-val").innerText = id;
     document.getElementById("global-progress-bar").style.display = "block";
-    speakVoice("Ilość pozycji zamówienia " + itemsCount); // CZYTANIE ILOŚCI
+    speakVoice("Ilość pozycji zamówienia " + itemsCount);
     fetchNext(0);
 }
 
@@ -310,10 +309,9 @@ document.getElementById("btn-scan-item").onclick = async () => {
     } catch(e) { showError("Błąd kamery"); }
 };
 
-// NOWA WERSJA WYSYŁANIA (Z ANIMACJĄ PRZYCISKU)
 function sendVal(q) {
     const btnOk = document.getElementById("btn-qty-ok");
-    btnOk.classList.add("is-loading"); // ANIMACJA KÓŁKA
+    btnOk.classList.add("is-loading");
     btnOk.disabled = true;
 
     let qInt = parseInt(q);
@@ -322,9 +320,9 @@ function sendVal(q) {
     .then(data => {
         btnOk.classList.remove("is-loading");
         btnOk.disabled = false;
-        document.getElementById("qty-modal").style.display = "none"; // CHOWANIE MODALA PO SUKCESIE
-
+        
         if(data.status === "success") {
+            document.getElementById("qty-modal").style.display = "none";
             if (qInt >= targetItem.pozostalo) speakVoice("Zatwierdzono pełne pobranie");
             else speakVoice(`Zatwierdzono ${qInt} sztuk`);
             fetchNext(currentOffset);
@@ -345,10 +343,19 @@ function showView(id) {
     });
 }
 
+// ZAAWANSOWANE ZARZĄDZANIE MOWĄ DLA BŁĘDÓW
 function showError(m) {
     playSound('error');
-    if(m.toUpperCase().includes("ILOŚĆ")) speakVoice("Niewłaściwa ilość");
-    else speakVoice("Błąd, sprawdź ekran");
+    
+    // Sprawdzamy zawartość błędu aby dopasować odpowiedź głosową
+    const msgUpper = m.toUpperCase();
+    if(msgUpper.includes("ILOŚĆ") || msgUpper.includes("PRZEKROCZONO")) {
+        speakVoice("Niewłaściwa ilość");
+    } else if (msgUpper.includes("PRODUKT")) {
+        speakVoice("Niewłaściwy produkt");
+    } else {
+        speakVoice("Błąd, sprawdź ekran");
+    }
     
     const o = document.getElementById("error-overlay");
     o.style.display = "flex";
@@ -367,7 +374,6 @@ document.getElementById("btn-qty-ok").onclick = () => {
         flashDisplayError();
         return;
     }
-    // W tej wersji JS nie chowamy modala od razu! Zajmie się tym sendVal() po zatwierdzeniu przez serwer.
     sendVal(val); 
 };
 
