@@ -1,15 +1,13 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYQge7WGusvbwZ77c0D-TYhbriJLvTll8xsCA_Z0BWXmXDcC1ifNOtYsrEWlCcEpjb/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx2NOuufH3uIQR9zn5MYgg8Mf0guugyyYLGGMGapFdXjn2B8Vwac_7zv6FV7lJNxjBt/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
 let currentOffset = 0, currentInputValue = "0", isProcessing = false; 
 const html5QrCode = new Html5Qrcode("reader");
 
-// ZMIENNE AUDIO Z V2.3
 let audioCtx = null;
 let wakeLock = null;
 
-// ODBLOKOWANIE AUDIO I WAKELOCK Z V2.3
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -44,7 +42,6 @@ document.addEventListener('visibilitychange', () => {
 });
 requestWakeLock();
 
-// FUNKCJE AUDIO I TTS Z V2.3
 function speakVoice(text) {
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel(); 
@@ -83,7 +80,6 @@ function playSound(type) {
     }
 }
 
-// WIZUALIZACJA SKANERA Z V2.3
 function triggerScanVisual(type) {
     const sv = document.getElementById("scanner-visual");
     if(sv) {
@@ -94,7 +90,6 @@ function triggerScanVisual(type) {
     }
 }
 
-// BŁĘDY ILOŚCI Z V2.3
 function flashDisplayError() {
     playSound('error');
     speakVoice("Niewłaściwa ilość"); 
@@ -132,7 +127,7 @@ function renderUsers(users) {
 
 function selectUser(user) {
     currentUser = user;
-    unlockAudioAPI(); // Wymuszone odblokowanie po kliknięciu usera
+    unlockAudioAPI(); 
     document.getElementById("display-user-name").innerText = user;
     showView('view-orders-dashboard');
     loadOrders();
@@ -162,6 +157,7 @@ async function loadOrders() {
 
             const baton = document.createElement("div");
             baton.className = "order-baton";
+            // Zwracamy uwagę: onClick przekazuje też itemsCount do czytania
             baton.innerHTML = `
                 <div class="order-progress-fill" style="width:${o.progress}%; ${fillBg}"></div>
                 <div class="order-content">
@@ -171,18 +167,18 @@ async function loadOrders() {
                         <div class="status-badge status-${o.status}">${o.status}</div>
                     </div>
                 </div>`;
-            baton.onclick = () => startOrder(o.id);
+            baton.onclick = () => startOrder(o.id, o.itemsCount);
             container.appendChild(baton);
         });
     } catch(e) { showError("Błąd wczytywania zamówień"); }
 }
 
-function startOrder(id) {
+function startOrder(id, itemsCount) {
     currentOrderID = id;
     document.getElementById("header-main-row").style.display = "flex";
     document.getElementById("order-val").innerText = id;
     document.getElementById("global-progress-bar").style.display = "block";
-    speakVoice("Zamówienie " + id.split('/').pop()); // Czyta końcówkę ID zamówienia
+    speakVoice("Ilość pozycji zamówienia " + itemsCount); // CZYTANIE ILOŚCI
     fetchNext(0);
 }
 
@@ -257,7 +253,6 @@ async function fetchNext(offset) {
     }
 }
 
-// ZOOM ZDJĘCIA
 let zoomTimeout = null;
 document.getElementById('task-img').onclick = function() {
     const overlay = document.getElementById('image-zoom-overlay');
@@ -275,7 +270,6 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-// SKANER Z PEŁNĄ LOGIKĄ Z V2.3
 let torchOn = false;
 document.getElementById('btn-torch').onclick = async () => {
     torchOn = !torchOn;
@@ -316,11 +310,20 @@ document.getElementById("btn-scan-item").onclick = async () => {
     } catch(e) { showError("Błąd kamery"); }
 };
 
+// NOWA WERSJA WYSYŁANIA (Z ANIMACJĄ PRZYCISKU)
 function sendVal(q) {
+    const btnOk = document.getElementById("btn-qty-ok");
+    btnOk.classList.add("is-loading"); // ANIMACJA KÓŁKA
+    btnOk.disabled = true;
+
     let qInt = parseInt(q);
     fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&qty=${qInt}&action=validate`)
     .then(res => res.json())
     .then(data => {
+        btnOk.classList.remove("is-loading");
+        btnOk.disabled = false;
+        document.getElementById("qty-modal").style.display = "none"; // CHOWANIE MODALA PO SUKCESIE
+
         if(data.status === "success") {
             if (qInt >= targetItem.pozostalo) speakVoice("Zatwierdzono pełne pobranie");
             else speakVoice(`Zatwierdzono ${qInt} sztuk`);
@@ -329,7 +332,11 @@ function sendVal(q) {
             showError(data.msg);
         }
     })
-    .catch(() => showError("Błąd zapisu danych!"));
+    .catch(() => {
+        btnOk.classList.remove("is-loading");
+        btnOk.disabled = false;
+        showError("Błąd zapisu danych!");
+    });
 }
 
 function showView(id) {
@@ -349,7 +356,6 @@ function showError(m) {
     setTimeout(() => { o.style.display = "none"; }, 2500);
 }
 
-// LOGIKA NUMPADA (KONTROLA LIMITÓW)
 function updateDisplay(val) {
     currentInputValue = String(val);
     document.getElementById("qty-input-display").innerText = currentInputValue;
@@ -361,7 +367,7 @@ document.getElementById("btn-qty-ok").onclick = () => {
         flashDisplayError();
         return;
     }
-    document.getElementById("qty-modal").style.display = "none"; 
+    // W tej wersji JS nie chowamy modala od razu! Zajmie się tym sendVal() po zatwierdzeniu przez serwer.
     sendVal(val); 
 };
 
@@ -395,7 +401,6 @@ document.querySelectorAll('.btn-quick[data-add]').forEach(btn => {
 document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
 document.getElementById("btn-qty-cancel").onclick = () => document.getElementById("qty-modal").style.display = "none";
 
-// NAWIGACJA
 document.getElementById("btn-logout").onclick = () => {
     document.getElementById("header-main-row").style.display = "none";
     document.getElementById("global-progress-bar").style.display = "none";
