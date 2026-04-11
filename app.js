@@ -67,14 +67,12 @@ function playSound(type) {
         osc.start(audioCtx.currentTime);
         osc.stop(audioCtx.currentTime + 0.15);
     } else if (type === 'error') {
-        if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]); 
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(220, audioCtx.currentTime); 
-        gainNode.gain.setValueAtTime(0.8, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.frequency.setValueAtTime(220, audioCtx.currentTime + 0.15); 
-        gainNode.gain.setValueAtTime(0.8, audioCtx.currentTime + 0.15);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+        // Zmiana: krótki, niski sygnał błędu (fala prostokątna 150Hz - klasyczny skaner)
+        if ("vibrate" in navigator) navigator.vibrate(300); 
+        osc.type = 'square'; 
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime); 
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
         osc.start(audioCtx.currentTime);
         osc.stop(audioCtx.currentTime + 0.3);
     }
@@ -177,7 +175,7 @@ function startOrder(id, itemsCount) {
     document.getElementById("header-main-row").style.display = "flex";
     document.getElementById("order-val").innerText = id;
     document.getElementById("global-progress-bar").style.display = "block";
-    speakVoice("Ilość pozycji zamówienia " + itemsCount);
+    speakVoice("Ilość pozycji zamówienia " + itemsCount); 
     fetchNext(0);
 }
 
@@ -278,7 +276,8 @@ document.getElementById('btn-torch').onclick = async () => {
     } catch(e) { torchOn = false; alert("Latarka niedostępna"); }
 };
 
-document.getElementById("btn-scan-item").onclick = async () => {
+// WYDZIELONA FUNKCJA URUCHAMIAJĄCA SKANER (ABY MÓC DO NIEGO WRÓCIĆ Z MODALA)
+async function startScanner() {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
     document.getElementById("target-size-val").innerText = targetItem.rozmiar || "---";
@@ -286,27 +285,42 @@ document.getElementById("btn-scan-item").onclick = async () => {
     torchOn = false;
 
     try {
+        // Bezpieczne zatrzymanie kamery jeśli działa w tle
+        if (html5QrCode.isScanning) {
+            await html5QrCode.stop();
+        }
         await html5QrCode.start({ facingMode: "environment" }, { fps: 25 }, (text) => {
             if(text.trim() === String(targetItem.ean)) {
                 triggerScanVisual('success');
                 playSound('success');
-                html5QrCode.stop().then(() => {
-                    if(targetItem.pozostalo > 1) { 
-                        currentInputValue = "0";
-                        document.getElementById("qty-input-display").innerText = "0";
-                        document.getElementById("qty-name").innerText = targetItem.nazwa;
-                        document.getElementById("qty-kat-val").innerHTML = "Nr Kat: " + targetItem.nr_kat;
-                        document.getElementById("qty-remain").innerText = targetItem.pozostalo;
-                        document.getElementById("qty-modal").style.display = "flex";
-                        speakVoice(`Pobierz ${targetItem.pozostalo} sztuk`);
-                    } else { sendVal(1); }
-                });
+                
+                if (html5QrCode.isScanning) {
+                    html5QrCode.stop().then(() => {
+                        if(targetItem.pozostalo > 1) { 
+                            currentInputValue = "0";
+                            document.getElementById("qty-input-display").innerText = "0";
+                            document.getElementById("qty-name").innerText = targetItem.nazwa;
+                            document.getElementById("qty-kat-val").innerHTML = "Nr Kat: " + targetItem.nr_kat;
+                            document.getElementById("qty-remain").innerText = targetItem.pozostalo;
+                            document.getElementById("qty-modal").style.display = "flex";
+                            speakVoice(`Pobierz ${targetItem.pozostalo} sztuk`);
+                        } else { sendVal(1); }
+                    }).catch(e => console.error("Kamera stop error", e));
+                }
             } else { 
                 triggerScanVisual('error');
                 showError("BŁĘDNY PRODUKT!"); 
             }
         });
     } catch(e) { showError("Błąd kamery"); }
+}
+
+document.getElementById("btn-scan-item").onclick = () => startScanner();
+
+// ZMIANA: PRZYCISK ANULUJ WYŁĄCZA MODAL I WŁĄCZA PONOWNIE SKANER
+document.getElementById("btn-qty-cancel").onclick = () => {
+    document.getElementById("qty-modal").style.display = "none";
+    startScanner(); 
 };
 
 function sendVal(q) {
@@ -343,11 +357,8 @@ function showView(id) {
     });
 }
 
-// ZAAWANSOWANE ZARZĄDZANIE MOWĄ DLA BŁĘDÓW
 function showError(m) {
     playSound('error');
-    
-    // Sprawdzamy zawartość błędu aby dopasować odpowiedź głosową
     const msgUpper = m.toUpperCase();
     if(msgUpper.includes("ILOŚĆ") || msgUpper.includes("PRZEKROCZONO")) {
         speakVoice("Niewłaściwa ilość");
@@ -405,14 +416,20 @@ document.querySelectorAll('.btn-quick[data-add]').forEach(btn => {
 });
 
 document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
-document.getElementById("btn-qty-cancel").onclick = () => document.getElementById("qty-modal").style.display = "none";
 
 document.getElementById("btn-logout").onclick = () => {
     document.getElementById("header-main-row").style.display = "none";
     document.getElementById("global-progress-bar").style.display = "none";
     initApp();
 };
-document.getElementById("btn-back-scan").onclick = () => { html5QrCode.stop(); showView('task-panel'); };
+
+document.getElementById("btn-back-scan").onclick = () => { 
+    if (html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => showView('task-panel')).catch(() => showView('task-panel'));
+    } else {
+        showView('task-panel');
+    }
+};
 document.getElementById("btn-prev").onclick = () => { if(!isProcessing) fetchNext(currentOffset - 1); };
 document.getElementById("btn-next").onclick = () => { if(!isProcessing) fetchNext(currentOffset + 1); };
 document.getElementById("btn-finish-icon").onclick = () => { 
