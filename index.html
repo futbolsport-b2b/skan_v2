@@ -68,4 +68,53 @@
                         <button id="btn-next" class="btn-circle">▶</button>
                     </div>
                     <div class="task-content" id="product-data-area">
-                        <div id="
+                        <div id="freeze-overlay"></div>
+                        <h1 id="task-name">Ładowanie...</h1>
+                        
+                        <div class="product-image-box" id="product-image-box" style="display:none;">
+                            <img id="task-img" src="" alt="Zdjęcie produktu">
+                        </div>
+
+                        <div class="product-meta-row">
+                            <span id="task-kat">---</span><span class="meta-separator">|</span><span class="size-label">ROZ: <b id="task-size">---</b></span>
+                        </div>
+                        <div class="task-qty-box"><span class="qty-label">DO POBRANIA</span><div id="task-qty">0</div></div>
+                        <div id="task-notes-row" style="display:none;">UWAGI: <b id="task-notes">---</b></div>
+                    </div>
+                    <div id="task-action-container">
+                        <button id="btn-scan-item" class="btn-primary">SKANUJ PRODUKT</button>
+                        <div id="loading-bar-wrapper"><div id="loading-bar-inner"></div></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div id="qty-modal" style="display:none;">
+            <div class="sheet">
+                <div class="sheet-header">
+                    <h2 id="qty-name">---</h2>
+                    <span id="qty-kat-val">Nr Kat: ---</span>
+                </div>
+                <div class="remain-badge">Pozostało do zebrania: <b id="qty-remain">0</b></div>
+                <div class="quick-add-row">
+                    <button class="btn-quick" data-add="1">+1</button>
+                    <button class="btn-quick" data-add="5">+5</button>
+                    <button class="btn-quick" id="btn-quick-max">MAX</button>
+                </div>
+                <div id="qty-input-display" class="custom-input-display">0</div>
+                <div class="custom-numpad">
+                    <button class="np-btn" data-val="1">1</button><button class="np-btn" data-val="2">2</button><button class="np-btn" data-val="3">3</button>
+                    <button class="np-btn" data-val="4">4</button><button class="np-btn" data-val="5">5</button><button class="np-btn" data-val="6">6</button>
+                    <button class="np-btn" data-val="7">7</button><button class="np-btn" data-val="8">8</button><button class="np-btn" data-val="9">9</button>
+                    <button class="np-btn np-action" id="np-clear">C</button><button class="np-btn" data-val="0">0</button><button class="np-btn np-action" id="np-del">⌫</button>
+                </div>
+                <div class="modal-action-row">
+                    <button id="btn-qty-cancel" class="btn-cancel">ANULUJ</button>
+                    <button id="btn-qty-ok" class="btn-success">ZATWIERDŹ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js?v=3.4"></script>
+</body>
+</html>
