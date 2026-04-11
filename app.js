@@ -5,22 +5,116 @@ let currentUser = null, currentOrderID = null, targetItem = null;
 let currentOffset = 0, currentInputValue = "0", isProcessing = false; 
 const html5QrCode = new Html5Qrcode("reader");
 
+// ZMIENNE AUDIO Z V2.3
+let audioCtx = null;
+let wakeLock = null;
+
+// ODBLOKOWANIE AUDIO I WAKELOCK Z V2.3
+function unlockAudioAPI() {
+    if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const buffer = audioCtx.createBuffer(1, 1, 22050);
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioCtx.destination);
+    source.start(0);
+
+    if ('speechSynthesis' in window) {
+        let u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+    }
+}
+document.body.addEventListener('click', unlockAudioAPI, { once: true });
+document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
+
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => { wakeLock = null; });
+        }
+    } catch (err) {}
+}
+document.addEventListener('visibilitychange', () => {
+    if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
+});
+requestWakeLock();
+
+// FUNKCJE AUDIO I TTS Z V2.3
+function speakVoice(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); 
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'pl-PL';
+        utterance.rate = 1.1; 
+        window.speechSynthesis.speak(utterance);
+    }
+}
+
+function playSound(type) {
+    if (!audioCtx) unlockAudioAPI();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    if (type === 'success') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+        gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.15);
+    } else if (type === 'error') {
+        if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]); 
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(220, audioCtx.currentTime); 
+        gainNode.gain.setValueAtTime(0.8, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(220, audioCtx.currentTime + 0.15); 
+        gainNode.gain.setValueAtTime(0.8, audioCtx.currentTime + 0.15);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.3);
+    }
+}
+
+// WIZUALIZACJA SKANERA Z V2.3
+function triggerScanVisual(type) {
+    const sv = document.getElementById("scanner-visual");
+    if(sv) {
+        sv.classList.remove('scan-success', 'scan-error');
+        void sv.offsetWidth; 
+        sv.classList.add(type === 'success' ? 'scan-success' : 'scan-error');
+        setTimeout(() => { sv.classList.remove('scan-success', 'scan-error'); }, 800); 
+    }
+}
+
+// BŁĘDY ILOŚCI Z V2.3
+function flashDisplayError() {
+    playSound('error');
+    speakVoice("Niewłaściwa ilość"); 
+    const disp = document.getElementById("qty-input-display");
+    disp.classList.add("flash-error");
+    setTimeout(() => disp.classList.remove("flash-error"), 300);
+}
+
 window.onload = () => initApp();
 
 async function initApp() {
     document.getElementById("image-zoom-overlay").style.display = "none";
     showView('view-user-selection');
-    
     document.getElementById("user-list").innerHTML = "<div class='loader-text'>Wczytywanie operatorów...</div>";
     
     try {
         const resp = await fetch(`${SCRIPT_URL}?action=get_users`);
         const data = await resp.json();
-        if(data.status === "success") {
-            renderUsers(data.users);
-        } else {
-            showError(data.msg);
-        }
+        if(data.status === "success") renderUsers(data.users);
+        else showError(data.msg);
     } catch(e) { showError("Błąd połączenia z bazą"); }
 }
 
@@ -30,10 +124,7 @@ function renderUsers(users) {
     users.forEach(u => {
         const btn = document.createElement("button");
         btn.className = "btn-user";
-        btn.innerHTML = `
-            <div class="user-avatar-icon">👤</div>
-            <span>${u}</span>
-        `;
+        btn.innerHTML = `<div class="user-avatar-icon">👤</div><span>${u}</span>`;
         btn.onclick = () => selectUser(u);
         list.appendChild(btn);
     });
@@ -41,6 +132,7 @@ function renderUsers(users) {
 
 function selectUser(user) {
     currentUser = user;
+    unlockAudioAPI(); // Wymuszone odblokowanie po kliknięciu usera
     document.getElementById("display-user-name").innerText = user;
     showView('view-orders-dashboard');
     loadOrders();
@@ -60,14 +152,10 @@ async function loadOrders() {
         }
 
         data.orders.forEach(o => {
-            // Algorytm Gradientu Dążącego do Zieleni
             let fillBg;
-            if (o.progress === 0) {
-                fillBg = 'background: rgba(10, 132, 255, 0.15);'; // Delikatny niebieski
-            } else if (o.progress === 100) {
-                fillBg = 'background: rgba(50, 215, 75, 0.25);'; // Czysty zielony dla U
-            } else {
-                // Hue płynnie rośnie od 40 (żółty) do 110 (prawie zielony)
+            if (o.progress === 0) fillBg = 'background: rgba(10, 132, 255, 0.15);';
+            else if (o.progress === 100) fillBg = 'background: rgba(50, 215, 75, 0.25);';
+            else {
                 const hue = 40 + Math.floor((o.progress / 100) * 70);
                 fillBg = `background: linear-gradient(90deg, hsla(${hue}, 100%, 45%, 0.1), hsla(${hue}, 100%, 40%, 0.4));`;
             }
@@ -94,18 +182,14 @@ function startOrder(id) {
     document.getElementById("header-main-row").style.display = "flex";
     document.getElementById("order-val").innerText = id;
     document.getElementById("global-progress-bar").style.display = "block";
+    speakVoice("Zamówienie " + id.split('/').pop()); // Czyta końcówkę ID zamówienia
     fetchNext(0);
 }
 
 function setLoadingState(active) { 
     const card = document.querySelector('.task-card'); 
-    if (active) { 
-        card.classList.add('loading-mode'); 
-        isProcessing = true; 
-    } else { 
-        card.classList.remove('loading-mode'); 
-        isProcessing = false; 
-    } 
+    if (active) { card.classList.add('loading-mode'); isProcessing = true; } 
+    else { card.classList.remove('loading-mode'); isProcessing = false; } 
 }
 
 async function fetchNext(offset) {
@@ -160,6 +244,8 @@ async function fetchNext(offset) {
             }
             setLoadingState(false);
         } else {
+            playSound('success');
+            speakVoice("Zamówienie kompletne!");
             alert("ZAMÓWIENIE ZREALIZOWANE");
             loadOrders();
             showView('view-orders-dashboard');
@@ -171,6 +257,7 @@ async function fetchNext(offset) {
     }
 }
 
+// ZOOM ZDJĘCIA
 let zoomTimeout = null;
 document.getElementById('task-img').onclick = function() {
     const overlay = document.getElementById('image-zoom-overlay');
@@ -188,13 +275,28 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
+// SKANER Z PEŁNĄ LOGIKĄ Z V2.3
+let torchOn = false;
+document.getElementById('btn-torch').onclick = async () => {
+    torchOn = !torchOn;
+    try {
+        await html5QrCode.applyVideoConstraints({ advanced: [{ torch: torchOn }] });
+        document.getElementById('btn-torch').classList.toggle('active', torchOn);
+    } catch(e) { torchOn = false; alert("Latarka niedostępna"); }
+};
+
 document.getElementById("btn-scan-item").onclick = async () => {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
     document.getElementById("target-size-val").innerText = targetItem.rozmiar || "---";
+    document.getElementById("btn-torch").classList.remove('active');
+    torchOn = false;
+
     try {
         await html5QrCode.start({ facingMode: "environment" }, { fps: 25 }, (text) => {
             if(text.trim() === String(targetItem.ean)) {
+                triggerScanVisual('success');
+                playSound('success');
                 html5QrCode.stop().then(() => {
                     if(targetItem.pozostalo > 1) { 
                         currentInputValue = "0";
@@ -203,16 +305,31 @@ document.getElementById("btn-scan-item").onclick = async () => {
                         document.getElementById("qty-kat-val").innerHTML = "Nr Kat: " + targetItem.nr_kat;
                         document.getElementById("qty-remain").innerText = targetItem.pozostalo;
                         document.getElementById("qty-modal").style.display = "flex";
+                        speakVoice(`Pobierz ${targetItem.pozostalo} sztuk`);
                     } else { sendVal(1); }
                 });
-            } else { showError("BŁĘDNY PRODUKT!"); }
+            } else { 
+                triggerScanVisual('error');
+                showError("BŁĘDNY PRODUKT!"); 
+            }
         });
     } catch(e) { showError("Błąd kamery"); }
 };
 
 function sendVal(q) {
-    fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&qty=${q}&action=validate`)
-    .then(() => fetchNext(currentOffset));
+    let qInt = parseInt(q);
+    fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&qty=${qInt}&action=validate`)
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === "success") {
+            if (qInt >= targetItem.pozostalo) speakVoice("Zatwierdzono pełne pobranie");
+            else speakVoice(`Zatwierdzono ${qInt} sztuk`);
+            fetchNext(currentOffset);
+        } else {
+            showError(data.msg);
+        }
+    })
+    .catch(() => showError("Błąd zapisu danych!"));
 }
 
 function showView(id) {
@@ -220,31 +337,65 @@ function showView(id) {
         document.getElementById(v).style.display = (v === id) ? 'block' : 'none';
     });
 }
+
 function showError(m) {
+    playSound('error');
+    if(m.toUpperCase().includes("ILOŚĆ")) speakVoice("Niewłaściwa ilość");
+    else speakVoice("Błąd, sprawdź ekran");
+    
     const o = document.getElementById("error-overlay");
     o.style.display = "flex";
     document.getElementById("error-text").innerText = m;
     setTimeout(() => { o.style.display = "none"; }, 2500);
 }
 
-document.getElementById("btn-qty-ok").onclick = () => { document.getElementById("qty-modal").style.display = "none"; sendVal(parseInt(currentInputValue)); };
+// LOGIKA NUMPADA (KONTROLA LIMITÓW)
+function updateDisplay(val) {
+    currentInputValue = String(val);
+    document.getElementById("qty-input-display").innerText = currentInputValue;
+}
+
+document.getElementById("btn-qty-ok").onclick = () => {
+    let val = parseInt(currentInputValue);
+    if(val <= 0 || isNaN(val) || val > targetItem.pozostalo) {
+        flashDisplayError();
+        return;
+    }
+    document.getElementById("qty-modal").style.display = "none"; 
+    sendVal(val); 
+};
+
 document.querySelectorAll('.np-btn[data-val]').forEach(b => {
     b.onclick = () => {
-        currentInputValue = currentInputValue === "0" ? b.dataset.val : currentInputValue + b.dataset.val;
-        document.getElementById("qty-input-display").innerText = currentInputValue;
+        let newVal = currentInputValue === "0" ? b.dataset.val : currentInputValue + b.dataset.val;
+        if(parseInt(newVal) > targetItem.pozostalo) flashDisplayError();
+        else updateDisplay(newVal);
     };
 });
-document.getElementById("np-clear").onclick = () => { currentInputValue = "0"; document.getElementById("qty-input-display").innerText = "0"; };
-document.getElementById("np-del").onclick = () => { currentInputValue = currentInputValue.length > 1 ? currentInputValue.slice(0, -1) : "0"; document.getElementById("qty-input-display").innerText = currentInputValue; };
+
+document.getElementById("np-clear").onclick = () => updateDisplay("0");
+document.getElementById("np-del").onclick = () => { 
+    let newVal = currentInputValue.slice(0, -1);
+    updateDisplay(newVal === "" ? "0" : newVal);
+};
+
 document.querySelectorAll('.btn-quick[data-add]').forEach(btn => {
     btn.onclick = () => {
         let newVal = parseInt(currentInputValue) + parseInt(btn.getAttribute('data-add'));
-        if (newVal <= targetItem.pozostalo) { currentInputValue = String(newVal); document.getElementById("qty-input-display").innerText = currentInputValue; }
+        if (newVal > targetItem.pozostalo) {
+            flashDisplayError();
+            btn.classList.add('flash-error');
+            setTimeout(() => { btn.classList.remove('flash-error'); }, 300);
+        } else {
+            updateDisplay(newVal);
+        }
     };
 });
-document.getElementById('btn-quick-max').onclick = () => { currentInputValue = String(targetItem.pozostalo); document.getElementById("qty-input-display").innerText = currentInputValue; };
+
+document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
 document.getElementById("btn-qty-cancel").onclick = () => document.getElementById("qty-modal").style.display = "none";
 
+// NAWIGACJA
 document.getElementById("btn-logout").onclick = () => {
     document.getElementById("header-main-row").style.display = "none";
     document.getElementById("global-progress-bar").style.display = "none";
