@@ -10,11 +10,18 @@ window.onload = () => initApp();
 async function initApp() {
     document.getElementById("image-zoom-overlay").style.display = "none";
     showView('view-user-selection');
+    
+    document.getElementById("user-list").innerHTML = "<div class='loader-text'>Wczytywanie operatorów...</div>";
+    
     try {
         const resp = await fetch(`${SCRIPT_URL}?action=get_users`);
         const data = await resp.json();
-        if(data.status === "success") renderUsers(data.users);
-    } catch(e) { showError("Błąd połączenia z serwerem"); }
+        if(data.status === "success") {
+            renderUsers(data.users);
+        } else {
+            showError(data.msg);
+        }
+    } catch(e) { showError("Błąd połączenia z bazą"); }
 }
 
 function renderUsers(users) {
@@ -23,7 +30,10 @@ function renderUsers(users) {
     users.forEach(u => {
         const btn = document.createElement("button");
         btn.className = "btn-user";
-        btn.innerText = u;
+        btn.innerHTML = `
+            <div class="user-avatar-icon">👤</div>
+            <span>${u}</span>
+        `;
         btn.onclick = () => selectUser(u);
         list.appendChild(btn);
     });
@@ -38,24 +48,45 @@ function selectUser(user) {
 
 async function loadOrders() {
     const container = document.getElementById("orders-list-container");
-    container.innerHTML = "<div style='text-align:center; padding:20px; color:#8e8e93;'>Ładowanie zadań...</div>";
+    container.innerHTML = "<div class='loader-text'>Ładowanie przypisanych zadań...</div>";
     try {
         const resp = await fetch(`${SCRIPT_URL}?action=get_orders_list&userName=${encodeURIComponent(currentUser)}`);
         const data = await resp.json();
         container.innerHTML = "";
+        
+        if (data.orders.length === 0) {
+            container.innerHTML = "<div class='view-label' style='text-transform:none;'>Brak przypisanych zamówień.</div>";
+            return;
+        }
+
         data.orders.forEach(o => {
+            // Algorytm Gradientu Dążącego do Zieleni
+            let fillBg;
+            if (o.progress === 0) {
+                fillBg = 'background: rgba(10, 132, 255, 0.15);'; // Delikatny niebieski
+            } else if (o.progress === 100) {
+                fillBg = 'background: rgba(50, 215, 75, 0.25);'; // Czysty zielony dla U
+            } else {
+                // Hue płynnie rośnie od 40 (żółty) do 110 (prawie zielony)
+                const hue = 40 + Math.floor((o.progress / 100) * 70);
+                fillBg = `background: linear-gradient(90deg, hsla(${hue}, 100%, 45%, 0.1), hsla(${hue}, 100%, 40%, 0.4));`;
+            }
+
             const baton = document.createElement("div");
             baton.className = "order-baton";
             baton.innerHTML = `
-                <div class="order-progress-fill" style="width:${o.progress}%"></div>
+                <div class="order-progress-fill" style="width:${o.progress}%; ${fillBg}"></div>
                 <div class="order-content">
                     <div class="order-id">${o.id}</div>
-                    <div class="status-badge status-${o.status}">${o.status}</div>
+                    <div class="order-meta-group">
+                        <span class="order-percent">${o.progress}%</span>
+                        <div class="status-badge status-${o.status}">${o.status}</div>
+                    </div>
                 </div>`;
             baton.onclick = () => startOrder(o.id);
             container.appendChild(baton);
         });
-    } catch(e) { showError("Błąd bazy danych"); }
+    } catch(e) { showError("Błąd wczytywania zamówień"); }
 }
 
 function startOrder(id) {
@@ -66,7 +97,6 @@ function startOrder(id) {
     fetchNext(0);
 }
 
-// LOKIGA STANU ŁADOWANIA Z V2.3
 function setLoadingState(active) { 
     const card = document.querySelector('.task-card'); 
     if (active) { 
@@ -85,6 +115,12 @@ async function fetchNext(offset) {
         const res = await fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&action=get_next&offset=${offset}`);
         const data = await res.json();
         
+        if(data.status === "error") {
+            showError("SERWER: " + data.msg);
+            setLoadingState(false);
+            return;
+        }
+
         if(data.status === "next_item") {
             targetItem = data.item;
             currentOffset = data.current_offset;
@@ -99,16 +135,17 @@ async function fetchNext(offset) {
             qtyElem.innerText = targetItem.pozostalo;
             
             const notesRow = document.getElementById("task-notes-row");
-            if (targetItem.uwagi && targetItem.uwagi.trim() !== "") { 
-                document.getElementById("task-notes").innerText = targetItem.uwagi; 
+            const uwagiStr = targetItem.uwagi ? String(targetItem.uwagi).trim() : "";
+            
+            if (uwagiStr !== "") { 
+                document.getElementById("task-notes").innerText = uwagiStr; 
                 notesRow.style.display = "block"; 
                 qtyElem.style.color = "var(--error)"; 
             } else { 
                 notesRow.style.display = "none"; 
-                qtyElem.style.color = "var(--success)";
+                qtyElem.style.color = "var(--accent-green)";
             }
             
-            // BEZPIECZNE ŁADOWANIE ZDJĘĆ Z V2.3
             const imgBox = document.getElementById("product-image-box");
             const imgElem = document.getElementById("task-img");
             imgElem.src = "";
@@ -126,14 +163,14 @@ async function fetchNext(offset) {
             alert("ZAMÓWIENIE ZREALIZOWANE");
             loadOrders();
             showView('view-orders-dashboard');
+            setLoadingState(false);
         }
     } catch(e) {
         setLoadingState(false);
-        showError("Błąd pobierania danych produktu");
+        showError("Błąd wyświetlania danych"); 
     }
 }
 
-// PRZYWRÓCONY ZOOM ZDJĘCIA Z V2.3
 let zoomTimeout = null;
 document.getElementById('task-img').onclick = function() {
     const overlay = document.getElementById('image-zoom-overlay');
@@ -151,7 +188,6 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-// SKANOWANIE
 document.getElementById("btn-scan-item").onclick = async () => {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
@@ -179,7 +215,6 @@ function sendVal(q) {
     .then(() => fetchNext(currentOffset));
 }
 
-// INTERFEJS POMOCNICZY
 function showView(id) {
     ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => {
         document.getElementById(v).style.display = (v === id) ? 'block' : 'none';
@@ -192,7 +227,6 @@ function showError(m) {
     setTimeout(() => { o.style.display = "none"; }, 2500);
 }
 
-// OBSŁUGA PRZYCISKÓW NUMPADA Z V2.3
 document.getElementById("btn-qty-ok").onclick = () => { document.getElementById("qty-modal").style.display = "none"; sendVal(parseInt(currentInputValue)); };
 document.querySelectorAll('.np-btn[data-val]').forEach(b => {
     b.onclick = () => {
@@ -211,9 +245,19 @@ document.querySelectorAll('.btn-quick[data-add]').forEach(btn => {
 document.getElementById('btn-quick-max').onclick = () => { currentInputValue = String(targetItem.pozostalo); document.getElementById("qty-input-display").innerText = currentInputValue; };
 document.getElementById("btn-qty-cancel").onclick = () => document.getElementById("qty-modal").style.display = "none";
 
-// NAWIGACJA GŁÓWNA
-document.getElementById("btn-logout").onclick = () => initApp();
+document.getElementById("btn-logout").onclick = () => {
+    document.getElementById("header-main-row").style.display = "none";
+    document.getElementById("global-progress-bar").style.display = "none";
+    initApp();
+};
 document.getElementById("btn-back-scan").onclick = () => { html5QrCode.stop(); showView('task-panel'); };
 document.getElementById("btn-prev").onclick = () => { if(!isProcessing) fetchNext(currentOffset - 1); };
 document.getElementById("btn-next").onclick = () => { if(!isProcessing) fetchNext(currentOffset + 1); };
-document.getElementById("btn-finish-icon").onclick = () => { if(confirm("Opuścić zamówienie?")) loadOrders(), showView('view-orders-dashboard'); };
+document.getElementById("btn-finish-icon").onclick = () => { 
+    if(confirm("Opuścić zamówienie?")) {
+        document.getElementById("header-main-row").style.display = "none";
+        document.getElementById("global-progress-bar").style.display = "none";
+        loadOrders();
+        showView('view-orders-dashboard');
+    }
+};
