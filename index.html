@@ -1,23 +1,27 @@
-<!DOCTYPE html><html lang="pl"><head>
+<!DOCTYPE html>
+<html lang="pl">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v3.0</title>
-    <link rel="stylesheet" href="style.css?v=3.0">
-    <link rel="manifest" href="manifest.json">
+    <title>B2B TERMINAL v3.1</title>
+    <link rel="stylesheet" href="style.css?v=3.1">
     <meta name="theme-color" content="#1c1c1e">
-    <script src="https://unpkg.com/html5-qrcode"></script></head>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
 <body>
-    <div id="error-overlay"><div id="error-text">BŁĄD</div></div>
-    <div id="image-zoom-overlay"><img id="zoomed-img" src="" alt="Powiększenie"></div>
+    <div id="error-overlay" style="display:none;"><div id="error-text">BŁĄD</div></div>
+    <div id="image-zoom-overlay" style="display:none;"><img id="zoomed-img" src="" alt=""></div>
     
     <div class="app-container">
         <header id="main-header">
-            <div id="brand-title" class="brand-title">SYSTEM B2B v3.0 | DASHBOARD</div>
+            <div id="brand-title" class="brand-title">SYSTEM B2B | ZKI_V2</div>
             <div class="header-main-row" id="header-main-row" style="display: none;">
                 <div id="order-val"></div>
                 <button id="btn-finish-icon">ZAKOŃCZ</button>
             </div>
-            <div id="global-progress-bar" style="display:none;"><div id="global-progress-fill"></div></div>
+            <div id="global-progress-bar" style="display:none;">
+                <div id="global-progress-fill"></div>
+            </div>
         </header>
 
         <main id="main-view">
@@ -36,10 +40,11 @@
             </section>
 
             <section id="scanner-box" style="display:none;">
-                <button id="btn-back-scan"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
+                <button id="btn-back-scan">⬅</button>
                 <button id="btn-torch">🔦</button>
                 <div id="scanner-instruction">
-                    <span class="instruction-label">SKANUJ: <b id="target-kat-val">---</b> | ROZ: <b id="target-size-val">---</b></span>
+                    <span class="instruction-label">SKANUJ:</span>
+                    <div id="target-display"><b id="target-kat-val">---</b> | ROZ: <b id="target-size-val">---</b></div>
                 </div>
                 <div id="reader"></div>
                 <div id="scanner-visual">
@@ -55,29 +60,40 @@
                         <span class="task-lp-info">POZ. <b id="task-lp">--</b></span>
                         <button id="btn-next" class="btn-circle">▶</button>
                     </div>
-                    <div class="task-content" id="product-data-area">
-                        <div id="freeze-overlay"></div>
-                        <h1 id="task-name">---</h1>
-                        <div class="product-image-box" id="product-image-box"><img id="task-img" src=""></div>
+                    <div class="task-content">
+                        <h1 id="task-name">Ładowanie...</h1>
+                        <div class="product-image-box"><img id="task-img" src="" alt=""></div>
                         <div class="product-meta-row">
-                            <span id="task-kat">---</span><span class="meta-separator">|</span><span>ROZ: <b id="task-size">---</b></span>
+                            <span id="task-kat">---</span> | ROZ: <b id="task-size">---</b>
                         </div>
-                        <div class="task-qty-box"><span class="qty-label">DO POBRANIA</span><div id="task-qty">0</div></div>
-                        <div id="task-notes-row" style="display:none;">UWAGI: <b id="task-notes">---</b></div>
+                        <div class="task-qty-box">
+                            <span class="qty-label">DO POBRANIA</span>
+                            <div id="task-qty">0</div>
+                        </div>
                     </div>
                     <button id="btn-scan-item" class="btn-primary">SKANUJ PRODUKT</button>
-                    <div id="loading-bar-wrapper"><div id="loading-bar-inner"></div></div>
                 </div>
             </section>
         </main>
 
-        <div id="qty-modal">
+        <div id="qty-modal" style="display:none;">
             <div class="sheet">
-                <div class="sheet-header"><h2 id="qty-name">---</h2><span id="qty-kat-val">---</span></div>
+                <h2 id="qty-name">---</h2>
                 <div class="remain-badge">Pozostało: <b id="qty-remain">0</b></div>
-                <div class="quick-add-row">
-                    <button class="btn-quick" data-add="1">+1</button>
-                    <button class="btn-quick" data-add="5">+5</button>
-                    <button class="btn-quick" id="btn-quick-max">MAX</button>
+                <div id="qty-input-display" class="custom-input-display">0</div>
+                <div class="custom-numpad">
+                    <button class="np-btn" data-val="1">1</button><button class="np-btn" data-val="2">2</button><button class="np-btn" data-val="3">3</button>
+                    <button class="np-btn" data-val="4">4</button><button class="np-btn" data-val="5">5</button><button class="np-btn" data-val="6">6</button>
+                    <button class="np-btn" data-val="7">7</button><button class="np-btn" data-val="8">8</button><button class="np-btn" data-val="9">9</button>
+                    <button class="np-btn np-action" id="np-clear">C</button><button class="np-btn" data-val="0">0</button><button class="np-btn np-action" id="np-del">⌫</button>
                 </div>
-                <div id="qty-input-display
+                <div class="modal-action-row">
+                    <button id="btn-qty-cancel" class="btn-cancel">ANULUJ</button>
+                    <button id="btn-qty-ok" class="btn-success">ZATWIERDŹ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js?v=3.1"></script>
+</body>
+</html>
