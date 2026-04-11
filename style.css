@@ -19,34 +19,46 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 #main-view { display: flex; flex-direction: column; flex-grow: 1; position: relative; }
 
 /* ----------------------------------------- */
-/* LOGO & WIDOK: WYBÓR OPERATORA             */
+/* LOGO & KOMPAKTOWA SIATKA                  */
 /* ----------------------------------------- */
 .main-logo-container {
     width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 35px 20px 0;
+    padding: 15px 20px 20px; /* Zmniejszony górny padding (podciągnięcie logo) */
     box-sizing: border-box;
 }
 #main-logo {
-    max-width: 75%;
-    max-height: 90px;
+    max-width: 80%; /* Nieco większe by zrekompensować brak napisu */
+    max-height: 80px; /* Ograniczenie wysokości na rzecz siatki */
     height: auto;
     object-fit: contain;
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); /* Delikatny cień pod logo */
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); 
 }
 
-/* Zmniejszony margines z uwagi na obecność logo */
-.view-label { font-size: 13px; font-weight: 700; color: var(--text-secondary); text-align: center; margin: 15px 0 20px; letter-spacing: 1px; text-transform: uppercase; }
+/* Zacieśniony Grid, aby zmieścić 6 kafelków bez scrolla */
+.user-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 15px 15px; }
+.btn-user { 
+    background: var(--panel-bg); 
+    border: 1px solid var(--border-subtle); 
+    border-radius: 20px; /* Minimalnie mniejsze zaokrąglenia */
+    padding: 18px 10px; /* Zmniejszony padding wewnętrzny */
+    display: flex; flex-direction: column; align-items: center; gap: 8px; 
+    color: var(--text-primary); 
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
+    transition: transform 0.2s, background-color 0.2s; cursor: pointer; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+}
+.btn-user:active { transform: scale(0.94); background: rgba(255, 255, 255, 0.1); border-color: rgba(255,255,255,0.3); }
+.user-avatar-icon { width: 45px; height: 45px; background: rgba(255, 255, 255, 0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
+.btn-user span:last-child { font-size: 16px; font-weight: 800; }
 
-.user-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 0 20px 20px; }
-.btn-user { background: var(--panel-bg); border: 1px solid var(--border-subtle); border-radius: 24px; padding: 24px 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--text-primary); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transition: transform 0.2s, background-color 0.2s; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
-.btn-user:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.1); border-color: rgba(255,255,255,0.3); }
-.user-avatar-icon { width: 56px; height: 56px; background: rgba(255, 255, 255, 0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
-.btn-user span:last-child { font-size: 18px; font-weight: 800; }
-.loader-text { grid-column: 1 / -1; text-align: center; color: var(--text-secondary); font-size: 16px; font-weight: 700; padding: 40px; animation: pulse 1.5s infinite; }
-@keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+/* NOWOCZESNY SPINNER (ZAMIAST TEKSTU) */
+.loader-container { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; gap: 15px; }
+.modern-spinner { width: 40px; height: 40px; border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; }
+.loader-text-small { color: var(--text-secondary); font-size: 14px; font-weight: 600; letter-spacing: 1px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
 /* WIDOK: DASHBOARD ZAMÓWIEŃ */
 .dashboard-ctrl { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border-subtle); }
