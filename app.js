@@ -117,7 +117,14 @@ async function initApp() {
     stopIdleTimer();
     document.getElementById("image-zoom-overlay").style.display = "none";
     showView('view-user-selection');
-    document.getElementById("user-list").innerHTML = "<div class='loader-text'>Wczytywanie operatorów...</div>";
+    
+    // Nowoczesny Loader dla strony operatorów
+    document.getElementById("user-list").innerHTML = `
+        <div class="loader-container">
+            <div class="modern-spinner"></div>
+            <div class="loader-text-small">Autoryzacja...</div>
+        </div>
+    `;
     
     try {
         const resp = await fetch(`${SCRIPT_URL}?action=get_users`);
@@ -149,14 +156,19 @@ function selectUser(user) {
 
 async function loadOrders() {
     const container = document.getElementById("orders-list-container");
-    container.innerHTML = "<div class='loader-text'>Ładowanie przypisanych zadań...</div>";
+    container.innerHTML = `
+        <div class="loader-container">
+            <div class="modern-spinner"></div>
+            <div class="loader-text-small">Pobieranie zadań...</div>
+        </div>
+    `;
     try {
         const resp = await fetch(`${SCRIPT_URL}?action=get_orders_list&userName=${encodeURIComponent(currentUser)}`);
         const data = await resp.json();
         container.innerHTML = "";
         
         if (data.orders.length === 0) {
-            container.innerHTML = "<div class='view-label' style='text-transform:none;'>Brak przypisanych zamówień.</div>";
+            container.innerHTML = "<div class='view-label' style='text-transform:none; margin-top: 50px;'>Brak przypisanych zamówień.</div>";
             return;
         }
 
