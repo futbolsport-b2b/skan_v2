@@ -110,8 +110,6 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .np-action { color: var(--error); font-size: 22px; }
 .modal-action-row { display: flex; gap: 15px; width: 100%; }
 .btn-cancel { flex: 1; height: 60px; background: rgba(255,255,255,0.1); border-radius: 16px; border: none; color: #fff; font-size: 16px; font-weight: 700; }
-
-/* ANIMACJA PRZYCISKU ZATWIERDŹ */
 .btn-success { flex: 2; border-radius: 16px; background-color: var(--accent-green); border: none; color: #000; font-size: 18px; font-weight: 800; height: 60px; transition: transform 0.1s, background-color 0.2s; position: relative; }
 .btn-success:active { transform: scale(0.96); }
 .btn-success.is-loading { background-color: #2c2c2e; color: transparent; pointer-events: none; }
