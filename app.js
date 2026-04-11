@@ -7,7 +7,7 @@ const html5QrCode = new Html5Qrcode("reader");
 
 let audioCtx = null;
 let wakeLock = null;
-let scanIdleTimer = null; // Zmienna dla timera bezczynności skanera
+let scanIdleTimer = null; 
 
 function unlockAudioAPI() {
     if (!audioCtx) {
@@ -96,12 +96,11 @@ function flashDisplayError() {
     setTimeout(() => disp.classList.remove("flash-error"), 300);
 }
 
-// LOGIKA TIMERA BEZCZYNNOŚCI (5 SEKUND)
 function startIdleTimer() {
-    stopIdleTimer(); // Czyścimy poprzedni, by się nie nakładały
+    stopIdleTimer(); 
     scanIdleTimer = setTimeout(() => {
         speakVoice("Skanuj produkt");
-        startIdleTimer(); // Zapętlamy, by przypominał co 5 sekund, aż pracownik coś zrobi
+        startIdleTimer(); 
     }, 5000);
 }
 
@@ -294,7 +293,6 @@ document.getElementById('btn-torch').onclick = async () => {
     } catch(e) { torchOn = false; alert("Latarka niedostępna"); }
 };
 
-// NOWA FUNKCJA - START SKANERA Z OBSŁUGĄ BEZCZYNNOŚCI
 async function startScannerView() {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
@@ -302,7 +300,7 @@ async function startScannerView() {
     document.getElementById("btn-torch").classList.remove('active');
     torchOn = false;
 
-    startIdleTimer(); // Uruchomienie timera "Skanuj produkt" co 5s
+    startIdleTimer(); 
 
     try {
         if (html5QrCode.isScanning) {
@@ -310,7 +308,7 @@ async function startScannerView() {
         }
         await html5QrCode.start({ facingMode: "environment" }, { fps: 25 }, (text) => {
             
-            stopIdleTimer(); // Pracownik coś zeskanował, więc wyłączamy powiadomienie
+            stopIdleTimer(); 
             
             if(text.trim() === String(targetItem.ean)) {
                 triggerScanVisual('success');
@@ -332,7 +330,6 @@ async function startScannerView() {
             } else { 
                 triggerScanVisual('error');
                 showError("BŁĘDNY PRODUKT!"); 
-                // Po błędnym skanowaniu, wznów przypomnienie
                 setTimeout(() => startIdleTimer(), 2500);
             }
         });
@@ -340,6 +337,11 @@ async function startScannerView() {
 }
 
 document.getElementById("btn-scan-item").onclick = () => startScannerView();
+
+document.getElementById("btn-qty-cancel").onclick = () => {
+    document.getElementById("qty-modal").style.display = "none";
+    startScannerView(); 
+};
 
 function sendVal(q) {
     stopIdleTimer();
@@ -436,12 +438,6 @@ document.querySelectorAll('.btn-quick[data-add]').forEach(btn => {
 
 document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
 
-// ZMIANA: PRZYCISK ANULUJ TERAZ RESETUJE DO CZYTNIKA (Naprawa zawieszania)
-document.getElementById("btn-qty-cancel").onclick = () => {
-    document.getElementById("qty-modal").style.display = "none";
-    startScannerView(); 
-};
-
 document.getElementById("btn-logout").onclick = () => {
     stopIdleTimer();
     document.getElementById("header-main-row").style.display = "none";
@@ -450,7 +446,7 @@ document.getElementById("btn-logout").onclick = () => {
 };
 
 document.getElementById("btn-back-scan").onclick = () => { 
-    stopIdleTimer(); // Wyłączamy timer, bo pracownik sam wycofał się ze skanera
+    stopIdleTimer(); 
     if (html5QrCode.isScanning) {
         html5QrCode.stop().then(() => showView('task-panel')).catch(() => showView('task-panel'));
     } else {
