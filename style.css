@@ -8,7 +8,7 @@ body { margin: 0; font-family: var(--font); background: var(--bg-dark); color: v
 .app-container { height: 100dvh; display: flex; flex-direction: column; }
 
 header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: rgba(28,28,30,0.9); border-bottom: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 12px; width: 100%; box-sizing: border-box; }
-.brand-title { font-size: 11px; font-weight: 800; color: var(--text-secondary); letter-spacing: 1px; text-align: center; width: 100%; }
+.brand-title { font-size: 12px; font-weight: 900; color: var(--text-secondary); letter-spacing: 1.5px; text-align: center; width: 100%; text-transform: uppercase; }
 .header-main-row { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 15px; }
 #order-val { font-size: 22px; font-weight: 900; color: var(--accent-green); flex-grow: 1; text-align: center; }
 #btn-finish-icon { background: var(--error); border: none; color: #fff; height: 44px; padding: 0 20px; border-radius: 14px; font-size: 14px; font-weight: 800; display: flex; align-items: center; cursor: pointer; transition: transform 0.2s; }
@@ -18,7 +18,28 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 
 #main-view { display: flex; flex-direction: column; flex-grow: 1; position: relative; }
 
-.view-label { font-size: 14px; font-weight: 700; color: var(--text-secondary); text-align: center; margin: 40px 0 20px; letter-spacing: 1px; text-transform: uppercase; }
+/* ----------------------------------------- */
+/* LOGO & WIDOK: WYBÓR OPERATORA             */
+/* ----------------------------------------- */
+.main-logo-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 35px 20px 0;
+    box-sizing: border-box;
+}
+#main-logo {
+    max-width: 75%;
+    max-height: 90px;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); /* Delikatny cień pod logo */
+}
+
+/* Zmniejszony margines z uwagi na obecność logo */
+.view-label { font-size: 13px; font-weight: 700; color: var(--text-secondary); text-align: center; margin: 15px 0 20px; letter-spacing: 1px; text-transform: uppercase; }
+
 .user-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 0 20px 20px; }
 .btn-user { background: var(--panel-bg); border: 1px solid var(--border-subtle); border-radius: 24px; padding: 24px 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--text-primary); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transition: transform 0.2s, background-color 0.2s; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
 .btn-user:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.1); border-color: rgba(255,255,255,0.3); }
@@ -27,6 +48,7 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .loader-text { grid-column: 1 / -1; text-align: center; color: var(--text-secondary); font-size: 16px; font-weight: 700; padding: 40px; animation: pulse 1.5s infinite; }
 @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
 
+/* WIDOK: DASHBOARD ZAMÓWIEŃ */
 .dashboard-ctrl { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border-subtle); }
 #display-user-name { font-weight: 800; font-size: 18px; color: var(--text-primary); }
 .btn-icon-modern { background: rgba(255,69,58,0.15); border: 1px solid rgba(255,69,58,0.3); color: var(--error); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s, background 0.2s; }
@@ -45,6 +67,7 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .status-W { background-color: var(--accent-yellow); box-shadow: 0 0 15px rgba(255, 214, 10, 0.4); }
 .status-U { background-color: var(--accent-green); box-shadow: 0 0 15px rgba(50, 215, 75, 0.4); }
 
+/* KARTA PRODUKTU */
 .task-card { background: var(--panel-bg); border-radius: 24px; padding: 15px; border: 1px solid var(--border-subtle); margin: 10px; text-align: center; backdrop-filter: blur(10px); }
 .task-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .btn-circle { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 1px solid var(--border-subtle); color: #fff; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
@@ -74,6 +97,7 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .loading-mode #loading-bar-wrapper { display: block; }
 @keyframes progressMove { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 
+/* SKANER */
 #scanner-box { position: relative; width: 100%; height: 45vh; background: #000; overflow: hidden; }
 #reader { width: 100% !important; height: 100% !important; } #reader video { object-fit: cover !important; }
 #scanner-instruction { position: absolute; top: 15px; width: 100%; text-align: center; z-index: 110; pointer-events: none; }
@@ -93,6 +117,7 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 #scanner-visual.scan-error .corner { border-color: var(--error); }
 #scanner-visual.scan-success #laser-line { background: var(--accent-green); box-shadow: 0 0 10px var(--accent-green); }
 
+/* MODAL I OVERLAY */
 #qty-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 2000; align-items: flex-end; }
 .sheet { background: #1c1c1e; width: 100%; border-radius: 30px 30px 0 0; padding: 25px 25px calc(env(safe-area-inset-bottom) + 20px); border-top: 1px solid var(--border-subtle); }
 .remain-badge { background: rgba(50, 215, 75, 0.15); color: var(--accent-green); padding: 12px; border-radius: 14px; margin: 15px 0; text-align: center; font-weight: 700; }
