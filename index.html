@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>B2B TERMINAL v2.3</title>
+    <link rel="stylesheet" href="style.css?v=2.3">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1c1c1e">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body class="qr-mode">
+    <div id="error-overlay"><div id="error-text">BŁĄD</div></div>
+    
+    <div id="image-zoom-overlay">
+        <img id="zoomed-img" src="" alt="Powiększenie">
+    </div>
+    
+    <div class="app-container">
+        <header id="main-header">
+            <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI ZAMÓWIEŃ B2B ver.2.3</div>
+            
+            <div class="header-main-row" id="header-main-row" style="display: none;">
+                <div id="order-val"></div>
+                <button id="btn-finish-icon" style="display: none;">ZAKOŃCZ</button>
+            </div>
+
+            <div id="global-progress-bar" style="display:none;">
+                <div id="global-progress-fill"></div>
+            </div>
+        </header>
+
+        <main id="main-view">
+            <section id="scanner-box">
+                <button id="btn-back-scan" style="display:none;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+                <button id="btn-torch" style="display:none;">🔦</button>
+
+                <div id="scanner-instruction" style="display:none;">
+                    <span class="instruction-label">ZESKANUJ PRODUKT:</span>
+                    <div id="target-kat-display"><span id="target-kat-val">---</span><span class="ean-meta-sep">|</span><span class="ean-size-container"><b>ROZ:</b> <b id="target-size-val">---</b></span></div>
+                </div>
+                <div id="reader"></div>
+                <div id="scanner-visual">
+                    <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+                    <div id="laser-line"></div>
+                </div>
+            </section>
+
+            <div id="startup-screen-elements">
+                <div id="qr-instruction" class="breathing">ZESKANUJ KOD QR</div>
+                <div class="logo-container">
+                    <img src="logo.png" alt="Logo" id="company-logo">
+                </div>
+            </div>
+
+            <section id="task-panel" style="display:none;">
+                <div class="task-card">
+                    <div class="task-nav">
+                        <button id="btn-prev" class="btn-circle">◀</button>
+                        <span class="task-lp-info">POZYCJA <b id="task-lp">--</b></span>
+                        <button id="btn-next" class="btn-circle">▶</button>
+                    </div>
+                    <div class="task-content" id="product-data-area">
+                        <div id="freeze-overlay"></div>
+                        <h1 id="task-name">Ładowanie...</h1>
+                        
+                        <div class="product-image-box" id="product-image-box" style="display:none;">
+                            <img id="task-img" src="" alt="Zdjęcie produktu">
+                        </div>
+
+                        <div class="product-meta-row">
+                            <span id="task-kat">---</span><span class="meta-separator">|</span><span class="size-label">ROZ: <b id="task-size">---</b></span>
+                        </div>
+                        <div class="task-qty-box"><span class="qty-label">DO POBRANIA</span><div id="task-qty">0</div></div>
+                        <div id="task-notes-row" style="display:none;">UWAGI: <b id="task-notes">---</b></div>
+                    </div>
+                    <div id="task-action-container">
+                        <button id="btn-scan-item" class="btn-primary">SKANUJ PRODUKT</button>
+                        <div id="loading-bar-wrapper"><div id="loading-bar-inner"></div></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div id="qty-modal">
+            <div class="sheet">
+                <div class="sheet-header">
+                    <h2 id="qty-name">---</h2>
+                    <span id="qty-kat-val">Nr Kat: ---</span>
+                </div>
+                <div class="remain-badge">Pozostało do zebrania: <b id="qty-remain">0</b></div>
+                <div class="quick-add-row">
+                    <button class="btn-quick" data-add="1">+1</button>
+                    <button class="btn-quick" data-add="5">+5</button>
+                    <button class="btn-quick" id="btn-quick-max">MAX</button>
+                </div>
+                <div id="qty-input-display" class="custom-input-display">0</div>
+                <div class="custom-numpad">
+                    <button class="np-btn" data-val="1">1</button>
+                    <button class="np-btn" data-val="2">2</button>
+                    <button class="np-btn" data-val="3">3</button>
+                    <button class="np-btn" data-val="4">4</button>
+                    <button class="np-btn" data-val="5">5</button>
+                    <button class="np-btn" data-val="6">6</button>
+                    <button class="np-btn" data-val="7">7</button>
+                    <button class="np-btn" data-val="8">8</button>
+                    <button class="np-btn" data-val="9">9</button>
+                    <button class="np-btn np-action" id="np-clear">C</button>
+                    <button class="np-btn" data-val="0">0</button>
+                    <button class="np-btn np-action" id="np-del">⌫</button>
+                </div>
+                <div class="modal-action-row">
+                    <button id="btn-qty-cancel" class="btn-cancel">ANULUJ</button>
+                    <button id="btn-qty-ok" class="btn-success">ZATWIERDŹ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=2.3"></script>
+</body>
+</html>
