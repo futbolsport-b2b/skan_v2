@@ -18,11 +18,12 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 
 #main-view { display: flex; flex-direction: column; flex-grow: 1; position: relative; overflow: hidden; }
 
-/* LOGO I GRID */
+/* LOGO & KOMPAKTOWA SIATKA */
 .main-logo-container { width: 100%; display: flex; justify-content: center; align-items: center; padding: 25px 20px 20px; box-sizing: border-box; }
 #main-logo { width: 100%; max-width: 250px; max-height: 90px; height: auto; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); }
+
 .user-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 15px 15px; overflow-y: auto;}
-.btn-user { background: var(--panel-bg); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 20px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--text-primary); backdrop-filter: blur(20px); transition: transform 0.2s; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+.btn-user { background: var(--panel-bg); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 20px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--text-primary); backdrop-filter: blur(20px); transition: transform 0.2s, background-color 0.2s; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 .btn-user:active { transform: scale(0.94); background: rgba(255, 255, 255, 0.1); border-color: rgba(255,255,255,0.3); }
 .user-avatar-icon { width: 50px; height: 50px; background: rgba(255, 255, 255, 0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
 .btn-user span:last-child { font-size: 15px; font-weight: 800; text-align: center;}
@@ -51,9 +52,11 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .order-meta-group { display: flex; align-items: center; gap: 15px; }
 .order-percent { font-size: 16px; font-weight: 800; opacity: 0.9; width: 45px; text-align: right; }
 .status-badge { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 15px; color: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-.status-N { background-color: var(--accent-blue); color: #fff; } .status-W { background-color: var(--accent-yellow); } .status-U { background-color: var(--accent-green); }
+.status-N { background-color: var(--accent-blue); color: #fff; box-shadow: 0 0 15px rgba(10, 132, 255, 0.4); }
+.status-W { background-color: var(--accent-yellow); box-shadow: 0 0 15px rgba(255, 214, 10, 0.4); }
+.status-U { background-color: var(--accent-green); box-shadow: 0 0 15px rgba(50, 215, 75, 0.4); }
 
-/* KARTA PRODUKTU */
+/* ELASTYCZNA KARTA PRODUKTU */
 #task-panel { display: flex; flex-direction: column; height: 100%; overflow: hidden; padding-bottom: env(safe-area-inset-bottom); }
 .task-card { background: var(--panel-bg); border-radius: 24px; padding: 15px; border: 1px solid var(--border-subtle); margin: 10px; text-align: center; backdrop-filter: blur(10px); display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; box-sizing: border-box;}
 .task-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
@@ -63,6 +66,7 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 
 .task-content { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center; position: relative;}
 
+/* PRZYCISKI AKCJI */
 .task-action-row { flex-shrink: 0; display: flex; align-items: center; margin-top: 10px; width: 100%; gap: 12px; }
 .btn-primary { flex-grow: 1; height: 60px; border-radius: 20px; background: var(--accent-blue); border: none; color: #fff; font-size: 18px; font-weight: 800; transition: transform 0.2s; cursor: pointer; }
 .btn-primary:active:not(:disabled) { transform: scale(0.96); }
@@ -92,7 +96,6 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .loading-mode #loading-bar-wrapper { display: block; }
 @keyframes progressMove { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 
-
 /* ============================================================== */
 /* SKANER - NOWA LOGIKA WIZUALNA (Brak podwójnych ramek, Animacja)*/
 /* ============================================================== */
@@ -110,13 +113,8 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 #target-kat-display { font-size: 22px; font-weight: 900; margin-top: 5px; display: flex; justify-content: center; align-items: center; gap: 10px; }
 #target-kat-val { color: var(--accent-blue); } #target-size-val { color: var(--error); }
 
-/* Nasz własny celownik 300x150px - idealnie pokrywa się z maską kamery */
+/* Własny celownik dopasowany do logiki JS (tylko laser, rogi rysuje biblioteka i my je barwimy niżej) */
 #scanner-visual { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; pointer-events: none; width: 300px; height: 150px; transition: all 0.3s; }
-.corner { position: absolute; width: 40px; height: 40px; border: 6px solid #fff; border-radius: 12px; transition: border-color 0.2s; }
-.corner.tl { top: -3px; left: -3px; border-right: 0; border-bottom: 0; } 
-.corner.tr { top: -3px; right: -3px; border-left: 0; border-bottom: 0; }
-.corner.bl { bottom: -3px; left: -3px; border-right: 0; border-top: 0; } 
-.corner.br { bottom: -3px; right: -3px; border-left: 0; border-top: 0; }
 
 /* Animowany Laser */
 #laser-line { 
@@ -131,10 +129,13 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 #btn-back-scan { left: 20px; } #btn-torch { right: 20px; }
 #btn-torch.active { background: #fff; color: #000; box-shadow: 0 0 15px #fff; }
 
-/* Animacja i kolory stanu dla skanera */
-#scanner-visual.scan-success .corner { border-color: var(--accent-green); }
-#scanner-visual.scan-error .corner { border-color: var(--error); }
-#scanner-visual.scan-success #laser-line { background: var(--accent-green); box-shadow: 0 0 15px var(--accent-green); }
+/* INIEKCJA KOLORU W NATYWNE ROGI BIBLIOTEKI (Działa bezpośrednio na elementach generowanych) */
+#scanner-box.scan-success #qr-shaded-region div { border-color: var(--accent-green) !important; }
+#scanner-box.scan-error #qr-shaded-region div { border-color: var(--error) !important; }
+
+/* Zmiana lasera na zielony/czerwony */
+#scanner-box.scan-success #laser-line { background: var(--accent-green); box-shadow: 0 0 15px var(--accent-green); }
+#scanner-box.scan-error #laser-line { background: var(--error); box-shadow: 0 0 15px var(--error); }
 
 
 /* MODAL I NUMPAD */
