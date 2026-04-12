@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v8.6</title>
-    <link rel="stylesheet" href="style.css?v=8.6">
+    <title>B2B TERMINAL v8.7</title>
+    <link rel="stylesheet" href="style.css?v=8.7">
     <meta name="theme-color" content="#000000">
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
@@ -21,7 +21,7 @@
             <div class="header-title-bar" id="header-title-bar">
                 <img src="logo.png" alt="Logo" id="header-logo">
                 <div class="header-status-group">
-                    <span class="version-text">v8.6</span>
+                    <span class="version-text">v8.7</span>
                     <div class="network-status-indicator status-dot net-online"></div>
                 </div>
             </div>
@@ -48,7 +48,6 @@
                     </button>
                     
                     <div class="user-info-group">
-                        <div id="dashboard-user-avatar" class="dashboard-avatar"></div>
                         <span id="display-user-name">---</span>
                         <button id="btn-manual-lock" class="btn-icon-modern lock-btn">
                             <svg id="icon-lock-closed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
@@ -60,30 +59,12 @@
                 <div class="dashboard-tools">
                     <div class="tabs-container">
                         <button class="tab-btn active" id="tab-todo" onclick="switchTab('todo')">DO ZROBIENIA</button>
+                        <div class="tab-divider"></div>
+                        <button class="tab-search-btn" id="btn-toggle-search">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </button>
+                        <div class="tab-divider"></div>
                         <button class="tab-btn" id="tab-done" onclick="switchTab('done')">UKOŃCZONE</button>
-                    </div>
-                    
-                    <div class="search-box" id="search-box-container">
-                        <span class="search-icon">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        </span>
-                        <input type="text" id="input-search-orders" placeholder="Wyszukaj kod lub nr zamówienia..." readonly inputmode="none">
-                    </div>
-
-                    <div id="search-numpad" class="search-numpad-container">
-                        <button class="np-btn-search" data-val="1">1</button>
-                        <button class="np-btn-search" data-val="2">2</button>
-                        <button class="np-btn-search" data-val="3">3</button>
-                        <button class="np-btn-search" data-val="4">4</button>
-                        <button class="np-btn-search" data-val="5">5</button>
-                        <button class="np-btn-search" data-val="6">6</button>
-                        <button class="np-btn-search" data-val="7">7</button>
-                        <button class="np-btn-search" data-val="8">8</button>
-                        <button class="np-btn-search" data-val="9">9</button>
-                        <button class="np-btn-search np-action-search" id="np-search-clear">C</button>
-                        <button class="np-btn-search" data-val="0">0</button>
-                        <button class="np-btn-search np-action-search" id="np-search-del">⌫</button>
-                        <button class="np-btn-search np-special-search" data-val="/" style="grid-column: 1 / -1;">/</button>
                     </div>
                 </div>
 
@@ -174,7 +155,29 @@
                 </div>
             </div>
         </div>
+
+        <div id="search-modal" style="display:none;">
+            <div class="sheet sheet-search">
+                <div class="sheet-header">
+                    <h2 style="font-size:16px; margin: 0 0 10px; color: var(--text-secondary);">WYSZUKAJ ZAMÓWIENIE</h2>
+                </div>
+                <div id="search-input-display" class="custom-input-display search-display">Wpisz frazę...</div>
+                
+                <div class="custom-numpad">
+                    <button class="np-btn-search" data-val="1">1</button><button class="np-btn-search" data-val="2">2</button><button class="np-btn-search" data-val="3">3</button>
+                    <button class="np-btn-search" data-val="4">4</button><button class="np-btn-search" data-val="5">5</button><button class="np-btn-search" data-val="6">6</button>
+                    <button class="np-btn-search" data-val="7">7</button><button class="np-btn-search" data-val="8">8</button><button class="np-btn-search" data-val="9">9</button>
+                    <button class="np-btn-search np-special-search" data-val="/">/</button><button class="np-btn-search" data-val="0">0</button><button class="np-btn-search np-action-search" id="np-search-del">⌫</button>
+                </div>
+                
+                <div class="modal-action-row" style="margin-top: 15px;">
+                    <button id="btn-search-cancel" class="btn-cancel">ZAMKNIJ</button>
+                    <button id="btn-search-ok" class="btn-success">SZUKAJ</button>
+                </div>
+            </div>
+        </div>
+
     </div>
-    <script src="app.js?v=8.6"></script>
+    <script src="app.js?v=8.7"></script>
 </body>
 </html>
