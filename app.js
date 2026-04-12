@@ -29,11 +29,11 @@ function getCurrentViewId() {
     return views.find(v => document.getElementById(v).style.display === 'flex');
 }
 
+// v1.5 FIX: Wyrzucamy całkowicie błędną nawigację przez history.back() na UI, zostawiamy tylko natywną obsługę 
 window.addEventListener('popstate', (event) => {
     if (document.getElementById('search-modal').style.display === 'flex') {
         document.getElementById('search-modal').style.display = 'none';
-        const currentView = getCurrentViewId();
-        history.pushState({ view: currentView }, "", "#" + currentView);
+        history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
 
@@ -44,15 +44,13 @@ window.addEventListener('popstate', (event) => {
         if(document.getElementById('scanner-box').style.display !== 'none' && hasEan) {
             startScannerView(); 
         }
-        const currentView = getCurrentViewId();
-        history.pushState({ view: currentView }, "", "#" + currentView);
+        history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
     
     if (document.getElementById('image-zoom-overlay').style.display === 'flex') {
         closeZoom();
-        const currentView = getCurrentViewId();
-        history.pushState({ view: currentView }, "", "#" + currentView);
+        history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
 
@@ -63,22 +61,13 @@ window.addEventListener('popstate', (event) => {
     const currentView = getCurrentViewId();
 
     if (currentView === 'scanner-box' && targetView === 'task-panel') {
-        stopIdleTimer(); 
-        if (html5QrCode.isScanning) {
-            html5QrCode.stop().then(() => showView('task-panel', false)).catch(() => showView('task-panel', false));
-        } else {
-            showView('task-panel', false);
-        }
+        document.getElementById("btn-back-scan").click();
         return;
     }
 
     if (currentView === 'task-panel' && targetView === 'view-orders-dashboard') {
-        stopIdleTimer();
         if(confirm("Opuścić zamówienie?")) {
-            document.getElementById("header-main-row").style.display = "none";
-            document.getElementById("global-progress-bar").style.display = "none";
-            loadOrders();
-            showView('view-orders-dashboard', false);
+            exitToDashboard();
         } else {
             history.pushState({ view: 'task-panel' }, "", "#task-panel");
         }
@@ -86,16 +75,23 @@ window.addEventListener('popstate', (event) => {
     }
 
     if (currentView === 'view-orders-dashboard' && targetView === 'view-user-selection') {
-        sessionStorage.removeItem('manualUnlock'); isManualUnlocked = false; updateLockUI();
-        stopIdleTimer(); 
-        document.getElementById("header-main-row").style.display = "none"; 
-        document.getElementById("global-progress-bar").style.display = "none"; 
-        initApp(); 
+        document.getElementById("btn-logout").click();
         return;
     }
 
     showView(targetView, false);
 });
+
+// v1.5 FIX: Twarde wymuszenie wyjścia z karty produktu i ukatrupienie starych pasków
+function exitToDashboard() {
+    stopIdleTimer();
+    document.getElementById("header-main-row").style.display = "none";
+    document.getElementById("global-progress-bar").style.display = "none";
+    loadOrders();
+    showView('view-orders-dashboard', false); 
+    history.replaceState({ view: 'view-orders-dashboard' }, "", "#view-orders-dashboard");
+    setLoadingState(false);
+}
 
 function startIdleTimer(context) {
     stopIdleTimer(); 
@@ -248,7 +244,6 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręcznego wprowadzania Aktywny");
 };
 
-// PRZYCISK LIVE SYNC (v1.3 Fix)
 document.getElementById('btn-refresh-orders').onclick = async function() {
     this.classList.add('spin-anim');
     await loadOrders();
@@ -261,32 +256,32 @@ window.onload = () => {
     initApp();
 };
 
-// v1.4: Prawdziwie ciemna paleta męska
+// v1.5 FIX: Głębokie, mocne kolory dla mężczyzn, pastelowe dla kobiet
 const MALE_COLORS = [
     { hue: 210, saturation: 80, lightness: 30 }, // Ciemny Granat
     { hue: 350, saturation: 80, lightness: 30 }, // Ciemny Karmazynowy
     { hue: 130, saturation: 60, lightness: 25 }, // Ciemna Butelkowa Zieleń
     { hue: 280, saturation: 60, lightness: 35 }, // Ciemny Fiolet
-    { hue: 25,  saturation: 80, lightness: 35 }, // Ciemny Rdzawy/Brąz
+    { hue: 25,  saturation: 80, lightness: 35 }, // Ciemny Rdzawy
     { hue: 180, saturation: 80, lightness: 25 }, // Ciemny Morski
     { hue: 240, saturation: 70, lightness: 40 }, // Ciemny Indigo
     { hue: 0,   saturation: 0,  lightness: 25 }  // Ciemny Grafit
 ];
 
 const FEMALE_COLORS = [
-    { hue: 340, saturation: 70, lightness: 70 }, 
-    { hue: 290, saturation: 50, lightness: 70 }, 
-    { hue: 170, saturation: 50, lightness: 60 }, 
-    { hue: 20,  saturation: 80, lightness: 70 }, 
-    { hue: 200, saturation: 70, lightness: 70 }, 
-    { hue: 320, saturation: 60, lightness: 70 }  
+    { hue: 340, saturation: 70, lightness: 65 }, // Różowy pastel
+    { hue: 290, saturation: 50, lightness: 65 }, // Wrzosowy
+    { hue: 170, saturation: 50, lightness: 55 }, // Miętowy
+    { hue: 20,  saturation: 80, lightness: 65 }, // Brzoskwiniowy
+    { hue: 200, saturation: 70, lightness: 65 }, // Błękitny
+    { hue: 320, saturation: 60, lightness: 65 }  // Jasna fuksja
 ];
 
 function getColorComponents(name) {
     if (!name) return MALE_COLORS[0];
     const cleanName = name.trim().toUpperCase();
 
-    // v1.4 FIX: Złoty dla Łukasza jest wymuszany przez CSS, ale tutaj zapobiegawczo przypisujemy wlaściwości
+    // Awaryjnie, choć Złoty jest robiony przez CSS, by inne komponenty też miały odcień
     if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
         return { hue: 45, saturation: 100, lightness: 50 }; 
     }
@@ -362,7 +357,6 @@ function renderUsers(users) {
         btn.className = "btn-user";
         
         const initials = window.userInitialsMap[u.name] || "??";
-        
         const cleanName = String(u.name).trim().toUpperCase();
         const isGold = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
         
@@ -430,10 +424,10 @@ function selectUser(user) {
     const nameDisplay = document.getElementById("display-user-name");
     nameDisplay.innerText = user;
     nameDisplay.className = ""; 
+    nameDisplay.style.color = ""; 
     
     if (isGold) {
         nameDisplay.classList.add("vip-gold-text");
-        nameDisplay.style.color = ""; // Usuń liniowy styl żeby zadziałał CSS !important
     } else {
         const colorComp = userColorsMap[user] || getColorComponents(user);
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
@@ -668,13 +662,11 @@ async function fetchNext(offset) {
             updateLockUI();
             setLoadingState(false);
         } else {
-            // v1.4 BUGFIX (Naprawa wiszącej belki na Dashboardzie)
-            playSound('success'); speakVoice("Zamówienie kompletne!"); alert("ZAMÓWIENIE ZREALIZOWANE");
-            document.getElementById("header-main-row").style.display = "none"; 
-            document.getElementById("global-progress-bar").style.display = "none";
-            loadOrders(); 
-            showView('view-orders-dashboard'); 
-            setLoadingState(false);
+            // v1.5 FIX: Natychmiastowe czyszczenie belki i twarde wyjście do ekranu zamówień
+            playSound('success'); 
+            speakVoice("Zamówienie kompletne!"); 
+            alert("ZAMÓWIENIE ZREALIZOWANE");
+            exitToDashboard();
         }
     } catch(e) { setLoadingState(false); showError("Błąd wyświetlania danych"); }
 }
@@ -826,15 +818,12 @@ function openNumpadModal() {
     startIdleTimer('numpad');
 }
 
+// GUI BUTTONS - Zamiast history.back() twarde przekierowania dla pewności stanu 
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
-    
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
-    
-    if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // powrót
-    } else {
+    if(document.getElementById('scanner-box').style.display !== 'none' && hasEan) {
         startScannerView(); 
     }
 };
@@ -878,7 +867,6 @@ document.getElementById("btn-qty-ok").onclick = () => {
         if (document.getElementById("qty-modal").style.display === "flex") startIdleTimer('numpad'); 
         return; 
     }
-    
     const mode = document.getElementById('scanner-box').style.display === 'block' || html5QrCode.isScanning ? "scan" : "manual";
     sendVal(val, mode); 
 };
@@ -890,6 +878,7 @@ function updateDisplay(val) {
         startIdleTimer('numpad'); 
     }
 }
+
 document.querySelectorAll('.np-btn[data-val]').forEach(b => { b.onclick = () => { let newVal = currentInputValue === "0" ? b.dataset.val : currentInputValue + b.dataset.val; if(parseInt(newVal) > targetItem.pozostalo) flashDisplayError(); else updateDisplay(newVal); }; });
 document.getElementById("np-clear").onclick = () => updateDisplay("0");
 document.getElementById("np-del").onclick = () => { let newVal = currentInputValue.slice(0, -1); updateDisplay(newVal === "" ? "0" : newVal); };
@@ -935,12 +924,37 @@ function showError(m, muteVoice = false) {
     setTimeout(() => { o.style.display = "none"; }, 2000);
 }
 
-document.getElementById("btn-logout").onclick = () => { history.back(); };
-document.getElementById("btn-back-scan").onclick = () => { history.back(); };
-document.getElementById("btn-finish-icon").onclick = () => {
+// v1.5 FIX: Wylogowanie NIE polega na history.back()
+document.getElementById("btn-logout").onclick = () => {
+    sessionStorage.removeItem('manualUnlock'); isManualUnlocked = false; updateLockUI();
+    stopIdleTimer(); 
     document.getElementById("header-main-row").style.display = "none"; 
-    document.getElementById("global-progress-bar").style.display = "none";
-    history.back(); 
+    document.getElementById("global-progress-bar").style.display = "none"; 
+    initApp(); 
+};
+
+// v1.5 FIX: Powrót ze skanera upewnia się, że wracamy na task-panel
+document.getElementById("btn-back-scan").onclick = () => { 
+    stopIdleTimer();
+    if (html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => {
+            showView('task-panel', false);
+            history.replaceState({ view: 'task-panel' }, "", "#task-panel");
+        }).catch(() => {
+            showView('task-panel', false);
+            history.replaceState({ view: 'task-panel' }, "", "#task-panel");
+        });
+    } else {
+        showView('task-panel', false);
+        history.replaceState({ view: 'task-panel' }, "", "#task-panel");
+    }
+};
+
+// v1.5 FIX: Manualne "Zakończ" wykorzystuje żelazną logikę czyszczenia
+document.getElementById("btn-finish-icon").onclick = () => { 
+    if(confirm("Opuścić zamówienie?")) {
+        exitToDashboard();
+    }
 };
 
 document.getElementById("btn-prev").onclick = () => { if(!isProcessing) fetchNext(currentOffset - 1); };
