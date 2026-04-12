@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzY3FlEKqnF7xDcHS4wbpUrXXQZVcG3BdoHDTXfqUA0D-3uYod3I77-4jSiMYQiA0t8/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw-tEHjsCLPHsRtqd-RJ7D85MhyMx7ntrhZcWGo7TL44gFEVxIyk7-O5t5bf_3YZIpY/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -12,7 +12,6 @@ const html5QrCode = new Html5Qrcode("reader");
 let audioCtx = null;
 let wakeLock = null;
 
-// --- ZAAWANSOWANE ZARZĄDZANIE TIMEREM BEZCZYNNOŚCI ---
 let idleTimer = null;
 let currentIdleContext = null; 
 
@@ -38,7 +37,7 @@ function stopIdleTimer() {
     }
 }
 
-// --- STATUS SYSTEMU (Zegarek i Sieć) ---
+// --- STATUS SYSTEMU ---
 setInterval(() => {
     const now = new Date();
     document.getElementById('clock-display').innerText = now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
@@ -58,7 +57,6 @@ function updateNetworkStatus() {
 window.addEventListener('online', updateNetworkStatus);
 window.addEventListener('offline', updateNetworkStatus);
 
-// --- WAKELOCK ---
 async function requestWakeLock() {
     try {
         if ('wakeLock' in navigator) {
@@ -71,7 +69,6 @@ document.addEventListener('visibilitychange', () => {
     if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
 
-// --- AUDIO & TTS ---
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -128,7 +125,6 @@ function playSound(type) {
     }
 }
 
-// --- WERYFIKACJA EAN I KŁÓDKA ---
 function isEanValid(ean) {
     if (ean === null || ean === undefined) return false;
     const str = String(ean).trim().toUpperCase();
@@ -174,7 +170,7 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
 };
 
-// --- START APP & GENERATOR AWATARÓW ---
+// --- START APP & GENERATOR AWATARÓW (v6.0) ---
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
@@ -184,7 +180,7 @@ window.onload = () => {
 function getInitials(name) {
     if (!name) return "??";
     const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    if (parts.length >= 2) return (parts[0][0] + "." + parts[1][0] + ".").toUpperCase();
     return name.substring(0, 2).toUpperCase();
 }
 
@@ -195,7 +191,7 @@ function getColor(name) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = Math.abs(hash % 360);
-    return `hsl(${hue}, 65%, 45%)`; // Przyjemne, nasycone, stałe dla imienia
+    return `hsl(${hue}, 70%, 50%)`; 
 }
 
 async function initApp() {
@@ -216,20 +212,28 @@ function renderUsers(users) {
     const list = document.getElementById("user-list");
     list.innerHTML = "";
     
-    // Teraz `users` to tablica obiektów: [{name: "Osoba", completed: 5}, ...]
     users.forEach(u => {
         const btn = document.createElement("button");
         btn.className = "btn-user";
         
         const initials = getInitials(u.name);
         const color = getColor(u.name);
+        
+        btn.style.backgroundColor = color; 
 
         btn.innerHTML = `
-            <div class="user-avatar-icon" style="background-color: ${color}; color: #fff;">
-                ${initials}
+            <div class="user-avatar-initials">${initials}</div>
+            <div class="user-completed-block">
+                <div class="user-box-icon">📦✔️</div>
+                <div class="user-completed-qty">${u.completed}</div>
+                <div class="user-completed-label">ZAMÓWIENIE DZIŚ</div>
             </div>
-            <span>${u.name}</span>
-            <div class="user-badge-completed">Ukończono: <b>${u.completed}</b></div>
+            <div class="user-tile-progress-wrapper">
+                <div class="user-tile-progress-bar">
+                    <div class="user-tile-progress-fill" style="width:${u.progress}%;"></div>
+                    <div class="user-tile-progress-text">${u.progress}%</div>
+                </div>
+            </div>
         `;
         
         btn.onclick = () => {
@@ -351,7 +355,6 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-// --- SKANER ---
 function triggerScanVisual(type) {
     const sv = document.getElementById("scanner-box");
     if(sv) {
@@ -406,6 +409,7 @@ async function startScannerView() {
                 await new Promise(r => setTimeout(r, 1200)); 
                 await html5QrCode.stop(); 
             } catch (err) {}
+            
             isFirstScanPerOrder = false;
             document.getElementById('scanner-loader').style.display = 'none';
         }
@@ -489,7 +493,6 @@ function openNumpadModal() {
     startIdleTimer('numpad');
 }
 
-// --- WYSYŁKA ---
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
@@ -497,7 +500,7 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
     if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // null
+        // Powrót do karty
     } else {
         startScannerView(); 
     }
