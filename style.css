@@ -23,7 +23,6 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 
 .header-main-row { display: flex; align-items: center; width: 100%; gap: 10px; }
 
-/* Powrót do czystego order-val na górnej belce */
 #order-val { 
     font-size: 22px; font-weight: 900; color: var(--accent-green); 
     flex-grow: 1; text-align: center; line-height: 1.2; display: block;
@@ -60,7 +59,8 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 
 /* DASHBOARD & KŁÓDKA */
 .dashboard-ctrl { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px 10px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); flex-shrink: 0; }
-.user-info-group { display: flex; align-items: center; gap: 12px; }
+.user-info-group { display: flex; align-items: center; gap: 10px; }
+.dashboard-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.3); box-shadow: 0 2px 5px rgba(0,0,0,0.3); flex-shrink: 0; }
 #display-user-name { font-weight: 800; font-size: 16px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;}
 .btn-icon-modern { background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
 .btn-icon-modern:active { transform: scale(0.9); }
@@ -73,12 +73,35 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .tab-btn.active { background: #fff; color: #000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 .search-box { position: relative; width: 100%; }
 .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); display: flex;}
-#input-search-orders { width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 12px 15px 12px 42px; color: #fff; font-size: 15px; font-weight: 600; box-sizing: border-box; outline: none; transition: border-color 0.2s; font-family: var(--font); }
+
+/* KLAWIATURA WYSZUKIWARKI v8.6 */
+#input-search-orders { 
+    width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); 
+    border-radius: 14px; padding: 12px 15px 12px 42px; color: #fff; font-size: 13px; 
+    font-weight: 600; box-sizing: border-box; outline: none; transition: border-color 0.2s; font-family: var(--font); 
+    cursor: pointer; /* Sygnalizuje, że to przycisk wywołujący klawiaturę */
+}
 #input-search-orders:focus { border-color: var(--accent-blue); }
+#input-search-orders::placeholder { color: rgba(255,255,255,0.4); }
+
+.search-numpad-container {
+    display: none; /* Sterowane z JS */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px; margin-top: 5px;
+    background: rgba(0,0,0,0.5); padding: 10px; border-radius: 16px; border: 1px solid var(--border-subtle);
+}
+.search-numpad-container.active { display: grid; }
+.np-btn-search { 
+    height: 48px; font-size: 20px; font-weight: 800; border-radius: 12px; 
+    background: rgba(255,255,255,0.15); border: none; color: #fff; cursor: pointer; transition: background 0.1s, transform 0.1s; 
+}
+.np-btn-search:active { background: rgba(255,255,255,0.3); transform: scale(0.95); }
+.np-action-search { color: var(--error); }
+.np-special-search { background: rgba(10, 132, 255, 0.2); color: var(--accent-blue); }
 
 #orders-list-container { padding: 16px 20px calc(env(safe-area-inset-bottom) + 50px); overflow-y: auto; flex-grow: 1; }
 
-/* BATON ZAMÓWIENIA - v8.4 KONTRAHENT (Ten sam rozmiar, z separatorem) */
+/* BATON ZAMÓWIENIA */
 .order-baton { position: relative; background: var(--panel-bg); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 15px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; backdrop-filter: blur(10px); transition: transform 0.15s, opacity 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
 .order-baton:active { transform: scale(0.96); }
 .order-baton.order-completed { opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
@@ -89,7 +112,6 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .order-id-group { display: flex; align-items: center; gap: 8px; flex-grow: 1; min-width: 0;}
 .order-id-wrapper { display: flex; flex-direction: row; align-items: center; overflow: hidden; flex-wrap: nowrap; gap: 6px; }
 
-/* v8.4 - Kontrahent taki sam jak ID, przedzielony pionową kreską */
 .baton-kontrahent { font-size: 20px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kontrahent-sep { color: rgba(255,255,255,0.2); font-size: 20px; font-weight: 400; padding-bottom: 2px;}
 .order-id { font-size: 20px; font-weight: 900; color: var(--accent-green); letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); white-space: nowrap; }
@@ -126,7 +148,6 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .btn-manual-trigger:not(:disabled) { background: rgba(255, 214, 10, 0.15); color: var(--accent-yellow); border-color: var(--accent-yellow); box-shadow: 0 0 15px rgba(255, 214, 10, 0.2); }
 .btn-manual-trigger:disabled { opacity: 0.2; cursor: not-allowed; }
 
-/* Wymuszenie żółtego przycisku gdy brakuje EANu (v8.4) */
 .btn-manual-trigger.force-unlocked { background: rgba(255, 214, 10, 0.15) !important; color: var(--accent-yellow) !important; border-color: var(--accent-yellow) !important; box-shadow: 0 0 15px rgba(255, 214, 10, 0.2) !important; opacity: 1 !important; cursor: pointer !important; }
 
 #task-name { font-size: 19px; font-weight: 800; line-height: 1.3; margin-bottom: 15px; width: 100%; color: #fff; text-align: center; }
@@ -154,19 +175,15 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 #scanner-box { position: relative; width: 100%; flex-grow: 1; background: #000; overflow: hidden; }
 #reader { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: flex; justify-content: center; align-items: center; } 
 #reader video { object-fit: cover !important; width: 100%; height: 100%; }
-
 #qr-shaded-region div { transition: border-color 0.2s ease !important; border-width: 5px !important; border-radius: 12px !important; }
 #scanner-box.scan-success #qr-shaded-region div { border-color: var(--accent-green) !important; }
 #scanner-box.scan-error #qr-shaded-region div { border-color: var(--error) !important; }
-
 #scanner-loader { position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 120; display: flex; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
 .loader-calib-text { color: var(--accent-yellow); margin-top: 20px; font-weight: 800; font-size: 14px; letter-spacing: 2px; }
-
 #scanner-instruction { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 90%; text-align: center; z-index: 110; pointer-events: none; background: rgba(0,0,0,0.65); padding: 10px; border-radius: 12px; backdrop-filter: blur(5px); }
 .instruction-label { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 1px;}
 #target-kat-display { font-size: 22px; font-weight: 900; margin-top: 5px; display: flex; justify-content: center; align-items: center; gap: 10px; }
 #target-kat-val { color: var(--accent-blue); } #target-size-val { color: var(--error); }
-
 #scanner-visual { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; pointer-events: none; opacity: 0; transition: opacity 0.4s ease; }
 #scanner-visual.scanner-ready { opacity: 1; }
 #laser-line { position: absolute; left: 10px; right: 10px; height: 3px; background: var(--error); box-shadow: 0 0 12px var(--error); transition: background 0.2s, box-shadow 0.2s; animation: scan-laser 2s infinite linear alternate; }
