@@ -232,7 +232,9 @@ function setLoadingState(active) {
 }
 
 async function fetchNext(offset) {
-    stopIdleTimer(); showView('task-panel'); setLoadingState(true); 
+    stopIdleTimer(); 
+    showView('task-panel'); 
+    setLoadingState(true); 
     try {
         const res = await fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&action=get_next&offset=${offset}`);
         const data = await res.json();
@@ -289,9 +291,9 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-// --- SKANER Z POPRAWKĄ COLD-START ---
+// --- SKANER Z ZABEZPIECZENIEM COLD-START ---
 function triggerScanVisual(type) {
-    const sv = document.getElementById("scanner-box");
+    const sv = document.getElementById("scanner-box"); 
     if(sv) {
         sv.classList.remove('scan-success', 'scan-error'); void sv.offsetWidth; 
         sv.classList.add(type === 'success' ? 'scan-success' : 'scan-error');
@@ -313,17 +315,16 @@ async function startScannerView() {
     document.getElementById("btn-torch").classList.remove('active');
     torchOn = false; 
     
-    // KLUCZOWA POPRAWKA "COLD START": 
-    // Czekamy 400ms, aby przeglądarka zdążyła w pełni wyrenderować UI,
-    // a fizyczna soczewka aparatu zdążyła się wyostrzyć na świetle,
-    // zanim zmusimy algorytm do szukania w ciemnych/rozmazanych klatkach.
-    await new Promise(resolve => setTimeout(resolve, 400));
-
-    startIdleTimer('scan'); 
-
     const windowWidth = window.innerWidth;
     const boxWidth = Math.min(windowWidth * 0.85, 380); 
     const boxHeight = 150; 
+    
+    const sv = document.getElementById("scanner-visual");
+    if(sv) {
+        sv.style.width = boxWidth + "px";
+        sv.style.height = boxHeight + "px";
+        sv.classList.remove('scanner-ready'); // Ukrywamy celownik na starcie
+    }
 
     const config = {
         fps: 15, 
@@ -338,9 +339,10 @@ async function startScannerView() {
         
         let scanMatched = false; 
         let errorCooldown = false; 
+        let isCameraWarm = false; // Programowe odrzucanie skanów w trakcie wyostrzania
 
         await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-            if (scanMatched) return;
+            if (scanMatched || !isCameraWarm) return; // Odrzucamy jeśli aparat się rozgrzewa!
 
             if(text.trim() === String(targetItem.ean)) {
                 scanMatched = true;
@@ -355,7 +357,7 @@ async function startScannerView() {
                             if(targetItem.pozostalo > 1) { 
                                 openNumpadModal();
                             } else { sendVal(1, "scan"); } 
-                        }).catch(e => console.error("Kamera stop error", e));
+                        }).catch(e => console.error(e));
                     }
                 }, 600); 
                 
@@ -377,6 +379,25 @@ async function startScannerView() {
                 }
             }
         });
+
+        // WYZWOLENIE OSTRZENIA (COLD-START FIX)
+        // Usypiamy naszą czujność na 800ms, a po tym czasie pokazujemy wizualizator.
+        try {
+            if (html5QrCode.getState() === 2) { 
+                html5QrCode.pause(true); 
+                setTimeout(() => {
+                    html5QrCode.resume();
+                    isCameraWarm = true;
+                    if(sv) sv.classList.add('scanner-ready'); // Pokazujemy celownik
+                    startIdleTimer('scan');
+                }, 800);
+            } else {
+                setTimeout(() => { isCameraWarm = true; if(sv) sv.classList.add('scanner-ready'); startIdleTimer('scan'); }, 800);
+            }
+        } catch (err) {
+            setTimeout(() => { isCameraWarm = true; if(sv) sv.classList.add('scanner-ready'); startIdleTimer('scan'); }, 800);
+        }
+
     } catch(e) { showError("Błąd kamery. Odśwież stronę.", true); }
 }
 
