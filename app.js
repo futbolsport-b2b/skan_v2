@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzuPG3EedNJ6R-e63x5cAyjxplTVZi3ArrE8SPBzLzaVzagH4f8d9FeXcN2Efw12TrA/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyp_iGG_iqwjcE5KTtUZYSm15be7B0l41Noi7tk2byvC9Ps5u2GQVzcdSnVsMnENa1g/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -23,7 +23,7 @@ document.addEventListener('visibilitychange', () => {
     if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
 
-// --- AUDIO I GŁOS ---
+// --- AUDIO & TTS ---
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -63,28 +63,26 @@ function playSound(type) {
     gainNode.connect(audioCtx.destination);
 
     if (type === 'success') {
-        // Czysty, wysoki dźwięk potwierdzenia
-        osc.type = 'sine'; 
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
-        gainNode.gain.setValueAtTime(1, audioCtx.currentTime); 
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        // Głośne, krótkie "PIK" (Skaner) - 2000Hz, fala prostokątna
+        osc.type = 'square'; 
+        osc.frequency.setValueAtTime(2000, audioCtx.currentTime); 
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); 
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
         osc.start(audioCtx.currentTime); 
-        osc.stop(audioCtx.currentTime + 0.15);
+        osc.stop(audioCtx.currentTime + 0.1);
     } else if (type === 'error') {
-        // Czysty, niski dźwięk błędu (zastąpił nieprzyjemny prostokątny)
+        // Głębokie "BUP" przy błędzie (Fala piłokształtna)
         if ("vibrate" in navigator) navigator.vibrate(300); 
-        osc.type = 'sine'; 
+        osc.type = 'sawtooth'; 
         osc.frequency.setValueAtTime(300, audioCtx.currentTime); 
-        gainNode.gain.setValueAtTime(1, audioCtx.currentTime); 
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime); 
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
         osc.start(audioCtx.currentTime); 
         osc.stop(audioCtx.currentTime + 0.3);
     }
 }
 
-// --- LOGIKA KŁÓDKI I ZABEZPIECZENIA EAN ---
-
-// PANCERNA FUNKCJA WERYFIKUJĄCA CZY EAN JEST PUSTY
+// PANCERNA WALIDACJA KODU EAN Z BAZY
 function isEanValid(ean) {
     if (ean === null || ean === undefined) return false;
     const str = String(ean).trim().toUpperCase();
@@ -109,16 +107,13 @@ function updateLockUI() {
     const scanBtn = document.getElementById('btn-scan-item');
     
     if (manualAddBtn && scanBtn) {
-        // Użycie pancernej funkcji
         const hasEan = isEanValid(targetItem ? targetItem.ean : null);
 
         if (!hasEan) {
-            // BRAK EAN: Blokada skanera, aktywny Numpad
             scanBtn.disabled = true;
             scanBtn.innerText = "BRAK KODU EAN";
             manualAddBtn.disabled = false; 
         } else {
-            // JEST EAN: Skaner aktywny, Numpad zależy od kłódki
             scanBtn.disabled = false;
             scanBtn.innerText = "SKANUJ PRODUKT";
             manualAddBtn.disabled = !isManualUnlocked; 
@@ -160,10 +155,7 @@ function renderUsers(users) {
         const btn = document.createElement("button");
         btn.className = "btn-user";
         btn.innerHTML = `<div class="user-avatar-icon">👤</div><span>${u}</span>`;
-        btn.onclick = () => {
-            requestWakeLock(); 
-            selectUser(u);
-        };
+        btn.onclick = () => { requestWakeLock(); selectUser(u); };
         list.appendChild(btn);
     });
 }
@@ -244,7 +236,6 @@ async function fetchNext(offset) {
                 imgElem.src = IMAGE_BASE_URL + "1_" + formattedKat + ".jpg";
             } else { imgBox.style.display = "none"; }
             
-            // Odśwież UI dopiero jak wiemy co to za produkt (Zabezpieczenie przed kliknięciem)
             updateLockUI();
             setLoadingState(false);
         } else {
@@ -254,7 +245,7 @@ async function fetchNext(offset) {
     } catch(e) { setLoadingState(false); showError("Błąd wyświetlania danych"); }
 }
 
-// --- SKANER I TIMER BEZCZYNNOŚCI ---
+// --- SKANER ---
 function startIdleTimer() {
     stopIdleTimer(); scanIdleTimer = setTimeout(() => { speakVoice("Skanuj produkt"); startIdleTimer(); }, 10000);
 }
@@ -283,42 +274,29 @@ async function startScannerView() {
     document.getElementById("btn-torch").classList.remove('active');
     torchOn = false; startIdleTimer(); 
 
-    // Dynamiczna, duża strefa skanowania (Rozszerzone na boki)
-    const windowWidth = window.innerWidth;
-    const boxWidth = Math.min(windowWidth * 0.85, 380); // Na małym ekranie 85%, max 380px szerokości
-    const boxHeight = 140; 
-    
-    // Ustawienie naszych obramowań, żeby pasowały do maski z kamery
-    const sv = document.getElementById("scanner-visual");
-    if(sv) {
-        sv.style.width = boxWidth + "px";
-        sv.style.height = boxHeight + "px";
-    }
-
+    // Szerokie pole na środku, aby swobodnie łapać długie/zaokrąglone kody 1D
     const config = {
         fps: 15, 
-        qrbox: { width: boxWidth, height: boxHeight },
+        qrbox: { width: 300, height: 150 },
         formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_8 ],
-        disableFlip: false,
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true } 
+        disableFlip: false 
     };
 
     try {
         if (html5QrCode.isScanning) await html5QrCode.stop();
         
-        let scanMatched = false; // Lokalne zabezpieczenie przed podwójnym skanem tej samej klatki
-        
-        await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-            if (scanMatched) return; // Już przetwarza
+        let isProcessingScan = false;
 
+        await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+            if (isProcessingScan) return;
             stopIdleTimer(); 
             
             if(text.trim() === String(targetItem.ean)) {
-                scanMatched = true;
-                triggerScanVisual('success'); 
+                isProcessingScan = true;
                 playSound('success');
+                triggerScanVisual('success'); 
                 
-                // MROZIMY KLAWIATURĘ/OBRAZ NA UŁAMEK SEKUNDY ABYŚ USŁYSZAŁ I ZOBACZYŁ ZIELONE RAMKI
+                // Mrozimy aparat na 0.6 sekundy, by zobaczyć zieleń i usłyszeć dźwięk
                 setTimeout(() => {
                     if (html5QrCode.isScanning) {
                         html5QrCode.stop().then(() => {
@@ -327,10 +305,12 @@ async function startScannerView() {
                             } else { sendVal(1, "scan"); } 
                         }).catch(e => console.error(e));
                     }
-                }, 600); // 0.6s opóźnienia
-                
+                }, 600);
             } else { 
-                triggerScanVisual('error'); showError("BŁĘDNY PRODUKT!"); 
+                // Tylko DŹWIĘK BŁĘDU I KOMUNIKAT NA EKRAN, BEZ GŁOSU
+                playSound('error');
+                triggerScanVisual('error');
+                showError("BŁĘDNY PRODUKT!", true); // true = wycisza TTS
                 setTimeout(() => startIdleTimer(), 2500);
             }
         });
@@ -338,7 +318,7 @@ async function startScannerView() {
 }
 
 document.getElementById("btn-scan-item").onclick = () => {
-    if (!isEanValid(targetItem ? targetItem.ean : null)) return; // Ponowne żelazne zabezpieczenie
+    if (!isEanValid(targetItem ? targetItem.ean : null)) return;
     startScannerView();
 };
 
@@ -363,13 +343,13 @@ function openNumpadModal() {
     }
 }
 
-// --- WYSYŁKA DANYCH ---
+// --- WYSYŁKA ---
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
     if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // Powrót do karty
+        // nic (wraca do karty)
     } else {
         startScannerView(); 
     }
@@ -414,7 +394,6 @@ document.getElementById("btn-qty-ok").onclick = () => {
     sendVal(val, mode); 
 };
 
-// NUMPAD
 function updateDisplay(val) { currentInputValue = String(val); document.getElementById("qty-input-display").innerText = currentInputValue; }
 document.querySelectorAll('.np-btn[data-val]').forEach(b => { b.onclick = () => { let newVal = currentInputValue === "0" ? b.dataset.val : currentInputValue + b.dataset.val; if(parseInt(newVal) > targetItem.pozostalo) flashDisplayError(); else updateDisplay(newVal); }; });
 document.getElementById("np-clear").onclick = () => updateDisplay("0");
@@ -422,19 +401,23 @@ document.getElementById("np-del").onclick = () => { let newVal = currentInputVal
 document.querySelectorAll('.btn-quick[data-add]').forEach(btn => { btn.onclick = () => { let newVal = parseInt(currentInputValue) + parseInt(btn.getAttribute('data-add')); if (newVal > targetItem.pozostalo) { flashDisplayError(); btn.classList.add('flash-error'); setTimeout(() => { btn.classList.remove('flash-error'); }, 300); } else { updateDisplay(newVal); } }; });
 document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
 
-// --- ZOOM, BŁĘDY I ZAKOŃCZENIE ---
+// --- ERROR I UI ---
 function showView(id) {
     ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => { document.getElementById(v).style.display = (v === id) ? 'block' : 'none'; });
     const brandTitle = document.getElementById('brand-title');
     if (id === 'task-panel' || id === 'scanner-box') brandTitle.style.display = 'none'; else brandTitle.style.display = 'block';
 }
 
-function showError(m) {
-    playSound('error'); const msgUpper = m.toUpperCase();
-    if(msgUpper.includes("ILOŚĆ") || msgUpper.includes("PRZEKROCZONO") || msgUpper.includes("TLE")) speakVoice("Błąd ilości lub modyfikacja w tle");
-    else if (msgUpper.includes("PRODUKT") || msgUpper.includes("USUNIĘTY")) speakVoice("Niewłaściwy produkt");
-    else speakVoice("Błąd, sprawdź ekran");
-    const o = document.getElementById("error-overlay"); o.style.display = "flex"; document.getElementById("error-text").innerText = m; setTimeout(() => { o.style.display = "none"; }, 4000);
+function showError(m, muteVoice = false) {
+    if (!muteVoice) {
+        playSound('error');
+        const msgUpper = m.toUpperCase();
+        if(msgUpper.includes("ILOŚĆ") || msgUpper.includes("PRZEKROCZONO") || msgUpper.includes("TLE")) speakVoice("Błąd ilości lub modyfikacja w tle");
+        else if (msgUpper.includes("PRODUKT") || msgUpper.includes("USUNIĘTY")) speakVoice("Niewłaściwy produkt");
+        else speakVoice("Błąd, sprawdź ekran");
+    }
+    
+    const o = document.getElementById("error-overlay"); o.style.display = "flex"; document.getElementById("error-text").innerText = m; setTimeout(() => { o.style.display = "none"; }, 2500);
 }
 
 let zoomTimeout = null;
