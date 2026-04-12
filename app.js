@@ -1,14 +1,17 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzuPG3EedNJ6R-e63x5cAyjxplTVZi3ArrE8SPBzLzaVzagH4f8d9FeXcN2Efw12TrA/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyp_iGG_iqwjcE5KTtUZYSm15be7B0l41Noi7tk2byvC9Ps5u2GQVzcdSnVsMnENa1g/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
 let currentOffset = 0, currentInputValue = "0", isProcessing = false; 
 let isManualUnlocked = sessionStorage.getItem('manualUnlock') === 'true'; 
+
+// FLAGA DO KALIBRACJI APARATU (COLD START)
+let isFirstScanPerOrder = true; 
+
 const html5QrCode = new Html5Qrcode("reader");
 
 let audioCtx = null;
 let wakeLock = null;
-let cameraList = []; // Pamięć rozgrzanych kamer
 
 // --- ZAAWANSOWANE ZARZĄDZANIE TIMEREM BEZCZYNNOŚCI ---
 let idleTimer = null;
@@ -191,18 +194,6 @@ function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     document.getElementById("display-user-name").innerText = user;
     showView('view-orders-dashboard'); loadOrders();
-
-    // WARM-UP (ROZGRZEWANIE KAMERY)
-    // Pytamy o sprzęt już przy logowaniu, by wymusić ewentualne okienko uprawnień
-    // i zainicjować fizycznie połączenie z API kamery.
-    Html5Qrcode.getCameras().then(devices => {
-        if (devices && devices.length) {
-            cameraList = devices;
-            console.log("Kamera rozgrzana i uprawnienia przyznane.");
-        }
-    }).catch(err => {
-        console.warn("Brak uprawnień kamery na starcie.", err);
-    });
 }
 
 async function loadOrders() {
@@ -231,6 +222,8 @@ async function loadOrders() {
 
 function startOrder(id, itemsCount) {
     currentOrderID = id;
+    isFirstScanPerOrder = true; // Zresetowanie flagi kalibracji po wejściu w nowe zamówienie
+
     document.getElementById("header-main-row").style.display = "flex";
     document.getElementById("order-val").innerText = id;
     document.getElementById("global-progress-bar").style.display = "block";
@@ -302,7 +295,7 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-// --- SKANER (COLD START FIX - 100ms) ---
+// --- SKANER (KALIBRACJA OPTYKI COLD-START) ---
 function triggerScanVisual(type) {
     const sv = document.getElementById("scanner-box");
     if(sv) {
@@ -326,75 +319,102 @@ async function startScannerView() {
     document.getElementById("btn-torch").classList.remove('active');
     torchOn = false; 
 
-    // FIX: Dajemy przeglądarce 100ms na fizyczne "narysowanie" panelu skanera (display: block).
-    // Jeśli aparat wystartuje zanim okno przybierze rozmiar, stworzy płótno 0x0 pikseli i "oślepnie".
-    setTimeout(async () => {
-        startIdleTimer('scan'); 
+    const windowWidth = window.innerWidth;
+    const boxWidth = Math.min(windowWidth * 0.85, 380); 
+    const boxHeight = 150; 
+    
+    const sv = document.getElementById("scanner-visual");
+    if(sv) {
+        sv.style.width = boxWidth + "px";
+        sv.style.height = boxHeight + "px";
+        sv.classList.remove('scanner-ready'); 
+    }
 
-        const windowWidth = window.innerWidth;
-        const boxWidth = Math.min(windowWidth * 0.85, 380); 
-        const boxHeight = 150; 
-        
-        const sv = document.getElementById("scanner-visual");
-        if(sv) {
-            sv.style.width = boxWidth + "px";
-            sv.style.height = boxHeight + "px";
+    const config = {
+        fps: 15, 
+        qrbox: { width: boxWidth, height: boxHeight },
+        formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_8 ],
+        disableFlip: false
+    };
+
+    try {
+        if (html5QrCode.isScanning) {
+            await html5QrCode.stop();
+            html5QrCode.clear(); 
         }
 
-        const config = {
-            fps: 15, 
-            qrbox: { width: boxWidth, height: boxHeight },
-            formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_8 ],
-            disableFlip: false
-        };
-
-        try {
-            if (html5QrCode.isScanning) {
-                await html5QrCode.stop();
-                html5QrCode.clear(); 
+        // ==========================================
+        // KALIBRACJA APARATU (ROZWIĄZANIE ŚLEPEGO DEKODERA)
+        // ==========================================
+        if (isFirstScanPerOrder) {
+            document.getElementById('scanner-loader').style.display = 'flex';
+            
+            try {
+                // Uruchamiamy aparat, ale z pustą funkcją nasłuchu. 
+                // Pozwala to soczewce wyostrzyć obraz bez obciążania procesora analizą zamazanych klatek.
+                await html5QrCode.start({ facingMode: "environment" }, config, () => {});
+                
+                // Czekamy 1.2 sekundy na fizyczne wyostrzenie obrazu
+                await new Promise(r => setTimeout(r, 1200)); 
+                
+                // Ubijamy ślepy proces
+                await html5QrCode.stop(); 
+            } catch (err) {
+                console.warn("Kalibracja pominięta:", err);
             }
             
-            let scanMatched = false; 
-            let errorCooldown = false; 
+            isFirstScanPerOrder = false; // Zapamiętujemy, że aparat w tym zamówieniu jest już ostry
+            document.getElementById('scanner-loader').style.display = 'none';
+        }
 
-            await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-                if (scanMatched || errorCooldown) return; // Hard Lock na wypadek błędu!
+        // WŁAŚCIWY START SKANERA
+        if(sv) sv.classList.add('scanner-ready');
+        startIdleTimer('scan');
 
-                if(text.trim() === String(targetItem.ean)) {
-                    scanMatched = true;
-                    stopIdleTimer(); 
-                    
-                    triggerScanVisual('success'); 
-                    playSound('success');
-                    
-                    setTimeout(() => {
-                        if (html5QrCode.isScanning) {
-                            html5QrCode.stop().then(() => {
-                                if(targetItem.pozostalo > 1) { 
-                                    openNumpadModal();
-                                } else { sendVal(1, "scan"); } 
-                            }).catch(e => console.error("Kamera stop error", e));
-                        }
-                    }, 600); 
-                    
-                } else { 
-                    errorCooldown = true; 
-                    stopIdleTimer(); 
-                    
-                    playSound('error');
-                    triggerScanVisual('error');
-                    showError("BŁĘDNY PRODUKT!", true); // true = cicho
-                    
-                    setTimeout(() => {
-                        errorCooldown = false;
-                        if (document.getElementById('scanner-box').style.display === 'block') {
-                            startIdleTimer('scan');
-                        }
-                    }, 2000); 
-                }
-            });
-        } catch(e) { showError("Błąd kamery. Odśwież stronę.", true); }
-    }, 100); // 100ms pauzy na renderowanie
+        let scanMatched = false; 
+        let errorCooldown = false; 
+
+        await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+            if (scanMatched || errorCooldown) return; 
+
+            if(text.trim() === String(targetItem.ean)) {
+                scanMatched = true;
+                stopIdleTimer(); 
+                
+                triggerScanVisual('success'); 
+                playSound('success');
+                
+                setTimeout(() => {
+                    if (html5QrCode.isScanning) {
+                        html5QrCode.stop().then(() => {
+                            if(targetItem.pozostalo > 1) { 
+                                openNumpadModal();
+                            } else { sendVal(1, "scan"); } 
+                        }).catch(e => console.error("Kamera stop error", e));
+                    }
+                }, 600); 
+                
+            } else { 
+                errorCooldown = true; 
+                stopIdleTimer(); 
+                
+                playSound('error');
+                triggerScanVisual('error');
+                showError("BŁĘDNY PRODUKT!", true); 
+                
+                setTimeout(() => {
+                    errorCooldown = false;
+                    if (document.getElementById('scanner-box').style.display === 'block') {
+                        startIdleTimer('scan');
+                    }
+                }, 2000); 
+            }
+        });
+
+    } catch(e) { 
+        document.getElementById('scanner-loader').style.display = 'none';
+        showError("Błąd kamery. Odśwież stronę.", true); 
+    }
 }
 
 document.getElementById("btn-scan-item").onclick = () => {
