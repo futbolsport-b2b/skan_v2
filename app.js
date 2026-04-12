@@ -248,6 +248,13 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręcznego wprowadzania Aktywny");
 };
 
+// NOWOŚĆ v1.1: Obsługa przycisku odświeżania bazy
+document.getElementById('btn-refresh-orders').onclick = async function() {
+    this.classList.add('spin-anim');
+    await loadOrders();
+    this.classList.remove('spin-anim');
+};
+
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
@@ -587,7 +594,6 @@ async function fetchNext(offset) {
             const imgBox = document.getElementById("product-image-box"), imgElem = document.getElementById("task-img");
             imgElem.src = "";
             if(targetItem.nr_kat && targetItem.nr_kat !== "---") {
-                // v8.9/v1.0 - Zmiana Spacji ORAZ Kropek na "_"
                 let formattedKat = String(targetItem.nr_kat).trim().replace(/\s+/g, '_').replace(/\./g, '_');
                 imgElem.onload = () => { imgBox.style.display = "flex"; }; imgElem.onerror = () => { imgBox.style.display = "none"; }; 
                 imgElem.src = IMAGE_BASE_URL + "1_" + formattedKat + ".jpg";
@@ -680,7 +686,7 @@ async function startScannerView() {
         }
 
         setTimeout(async () => {
-            if(sv) sv.classList.add('scanner-ready');
+            if(sv)classList.add('scanner-ready');
             startIdleTimer('scan');
 
             let scanMatched = false; 
