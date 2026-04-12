@@ -163,7 +163,6 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
 };
 
-// --- START APP & GENERATOR AWATARÓW ---
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
@@ -177,14 +176,28 @@ function getInitials(name) {
     return name.substring(0, 2).toUpperCase();
 }
 
+// v7.4: Sztywna paleta pięknych, wysoce kontrastujących i odróżniających się od siebie kolorów
+const DISTINCT_COLORS = [
+    { hue: 215, saturation: 90, lightness: 55 }, // Czysty Niebieski
+    { hue: 15,  saturation: 90, lightness: 55 }, // Intensywny Pomarańcz
+    { hue: 280, saturation: 70, lightness: 55 }, // Głęboki Fiolet
+    { hue: 140, saturation: 70, lightness: 45 }, // Czysty Zielony
+    { hue: 330, saturation: 85, lightness: 60 }, // Jasny Róż
+    { hue: 180, saturation: 90, lightness: 35 }, // Ciemny Morski
+    { hue: 350, saturation: 80, lightness: 55 }, // Karmazynowy
+    { hue: 240, saturation: 70, lightness: 65 }, // Indigo
+    { hue: 80,  saturation: 85, lightness: 45 }, // Limonkowy
+    { hue: 20,  saturation: 80, lightness: 45 }  // Rdzawy
+];
+
 function getColorComponents(name) {
-    if (!name) return { hue: 0, saturation: 0, lightness: 33 };
+    if (!name) return DISTINCT_COLORS[0];
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const hue = Math.abs(hash % 360);
-    return { hue: hue, saturation: 75, lightness: 55 };
+    // Wybieramy jeden ze zdefiniowanych, bezpiecznych kolorów na podstawie imienia
+    return DISTINCT_COLORS[Math.abs(hash) % DISTINCT_COLORS.length];
 }
 
 async function initApp() {
@@ -213,7 +226,7 @@ function renderUsers(users) {
         const colorComp = getColorComponents(u.name);
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         
-        // Ciemniejszy ton dla wypełnienia (lepiej kontrastuje z białym napisem)
+        // Pasek progresu delikatnie przyciemniony w stosunku do tła (daje super kontrast z białym tekstem)
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
         
         const isLow = u.progress < 15;
@@ -231,7 +244,7 @@ function renderUsers(users) {
             <div class="user-tile-bottom">
                 <div class="user-completed-row">
                     <div class="user-box-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24">
+                        <svg width="28" height="28" viewBox="0 0 24 24">
                           <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
                           <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
                           <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
@@ -585,8 +598,6 @@ function showView(id) {
     ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => { 
         document.getElementById(v).style.display = (v === id) ? 'flex' : 'none'; 
     });
-    const brandTitle = document.getElementById('brand-title');
-    if (id === 'task-panel' || id === 'scanner-box') brandTitle.style.display = 'none'; else brandTitle.style.display = 'block';
 }
 
 function showError(m, muteVoice = false) {
