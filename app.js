@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr9kogYir85gTOMwKpvz4kHj4LcyjIL0q1bYXHztibIw5a9p4pTMtNqdkCTeTFaGa0/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOSd2UshXD_6XN4DGqfEr1lhtN6SbSSBPRjEhyYkoFdeEolBj-GbqpKQXyJDqoFGzL/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -282,6 +282,7 @@ function renderUsers(users) {
         btn.className = "btn-user";
         
         const initials = getInitials(u.name);
+        
         const colorComp = DISTINCT_COLORS[index % DISTINCT_COLORS.length];
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
@@ -300,7 +301,7 @@ function renderUsers(users) {
             <div class="user-tile-bottom">
                 <div class="user-completed-row">
                     <div class="user-box-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24">
+                        <svg width="26" height="26" viewBox="0 0 24 24">
                           <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
                           <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
                           <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
@@ -402,9 +403,7 @@ function renderOrdersFromGlobal() {
         return;
     }
 
-    // WERSJA 8.1 - Przeniesienie paska postępu do WNĘTRZA .order-details
     filtered.forEach(o => {
-        // Obliczamy gradient dla wewnętrznego paska. Ponieważ jest na ciemnym tle, dajemy mu mocniejsze kolory (opacity: 0.9)
         let fillBg = o.progress === 0 ? 'background: rgba(10, 132, 255, 0.4);' : (o.progress === 100 ? 'background: rgba(50, 215, 75, 0.6);' : `background: linear-gradient(90deg, hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 40%, 0.6), hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 45%, 0.9));`);
         
         const isCompleted = o.status === 'U';
@@ -459,7 +458,7 @@ function startOrder(id, itemsCount) {
     isFirstScanPerOrder = true; 
 
     document.getElementById("header-main-row").style.display = "flex";
-    document.getElementById("order-val").innerText = id;
+    document.getElementById("order-val").innerText = id; // Default przed załadowaniem danych
     document.getElementById("global-progress-bar").style.display = "block";
     speakVoice("Pozycji do uszykowania " + itemsCount); 
     fetchNext(0);
@@ -471,6 +470,7 @@ function setLoadingState(active) {
     else { card.classList.remove('loading-mode'); isProcessing = false; } 
 }
 
+// v8.2 Wstrzykiwanie Kontrahenta
 async function fetchNext(offset) {
     stopIdleTimer(); showView('task-panel'); setLoadingState(true); 
     try {
@@ -482,6 +482,14 @@ async function fetchNext(offset) {
         if(data.status === "next_item") {
             targetItem = data.item; currentOffset = data.current_offset;
             document.getElementById("global-progress-fill").style.width = data.progress + "%";
+            
+            // AKTUALIZACJA BELKI: Kontrahent | Numer Zamówienia (v8.2)
+            const orderHeader = document.getElementById("order-val");
+            orderHeader.innerHTML = `
+                <span class="kontrahent-text">${targetItem.kontrahent}</span>
+                <span class="order-id-subtext">${currentOrderID}</span>
+            `;
+
             document.getElementById("task-lp").innerText = targetItem.lp; 
             document.getElementById("task-name").innerText = targetItem.nazwa;
             document.getElementById("task-kat").innerText = targetItem.nr_kat; 
@@ -674,7 +682,7 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
     if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // null
+        // powrót
     } else {
         startScannerView(); 
     }
