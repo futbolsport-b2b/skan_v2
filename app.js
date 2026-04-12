@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyh1lP_v-OA88z5wXl5yJWldVkKDw-2GXzIH8xpyoyhHNrPs3H4VIrIjmevaca-dXJ9/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw2Z5JlP-mwPviHs3njmWxM6uDZSNMXIHLCB_gMkGkiW21BkETZYL3BrlJtAuJfdPJz/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -13,7 +13,6 @@ let activeDashboardTab = 'todo';
 let activeSearchQuery = "";
 let tempSearchQuery = "";
 
-// Globalny słownik przechowujący kolory dla spójności między ekranami
 let userColorsMap = {}; 
 
 const html5QrCode = new Html5Qrcode("reader");
@@ -262,18 +261,17 @@ function getInitials(name) {
     return name.substring(0, 2).toUpperCase();
 }
 
-// v1.0: Sztywna, silnie kontrastowa paleta kolorów
 const DISTINCT_COLORS = [
-    { hue: 210, saturation: 90, lightness: 55 }, // 0: Czysty Niebieski
-    { hue: 350, saturation: 85, lightness: 55 }, // 1: Karmazynowy Czerwony
-    { hue: 130, saturation: 75, lightness: 45 }, // 2: Głęboki Zielony
-    { hue: 280, saturation: 80, lightness: 60 }, // 3: Fioletowy
-    { hue: 25,  saturation: 95, lightness: 50 }, // 4: Pomarańczowy
-    { hue: 180, saturation: 85, lightness: 40 }, // 5: Morski / Turkus
-    { hue: 320, saturation: 80, lightness: 60 }, // 6: Magentowy / Różowy
-    { hue: 75,  saturation: 80, lightness: 40 }, // 7: Limonkowy
-    { hue: 240, saturation: 85, lightness: 65 }, // 8: Jasny Indigo
-    { hue: 0,   saturation: 0,  lightness: 45 }  // 9: Ciemny Szary
+    { hue: 210, saturation: 90, lightness: 55 },
+    { hue: 350, saturation: 85, lightness: 55 },
+    { hue: 130, saturation: 75, lightness: 45 },
+    { hue: 280, saturation: 80, lightness: 60 },
+    { hue: 25,  saturation: 95, lightness: 50 },
+    { hue: 180, saturation: 85, lightness: 40 },
+    { hue: 320, saturation: 80, lightness: 60 },
+    { hue: 75,  saturation: 80, lightness: 40 },
+    { hue: 240, saturation: 85, lightness: 65 },
+    { hue: 0,   saturation: 0,  lightness: 45 } 
 ];
 
 async function initApp() {
@@ -304,7 +302,6 @@ function renderUsers(users) {
         
         const initials = getInitials(u.name);
         
-        // Zawsze złoty dla Ł.C.
         let colorComp;
         if (initials === "Ł.C." || initials === "ŁC" || initials === "Ł. C.") {
             colorComp = { hue: 45, saturation: 100, lightness: 50 }; 
@@ -364,7 +361,6 @@ function renderUsers(users) {
 function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     
-    // Odczytanie koloru z mapy i przypisanie do imienia
     const colorComp = userColorsMap[user] || { hue: 210, saturation: 90, lightness: 60 };
     const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
     
@@ -382,10 +378,6 @@ function selectUser(user) {
 
     Html5Qrcode.getCameras().then(devices => {}).catch(err => {});
 }
-
-// =========================================================
-// WYSZUKIWARKA & CUSTOM NUMPAD MODAL
-// =========================================================
 
 function switchTab(tab) {
     activeDashboardTab = tab;
@@ -595,7 +587,8 @@ async function fetchNext(offset) {
             const imgBox = document.getElementById("product-image-box"), imgElem = document.getElementById("task-img");
             imgElem.src = "";
             if(targetItem.nr_kat && targetItem.nr_kat !== "---") {
-                let formattedKat = String(targetItem.nr_kat).trim().replace(/\s+/g, '_');
+                // v8.9/v1.0 - Zmiana Spacji ORAZ Kropek na "_"
+                let formattedKat = String(targetItem.nr_kat).trim().replace(/\s+/g, '_').replace(/\./g, '_');
                 imgElem.onload = () => { imgBox.style.display = "flex"; }; imgElem.onerror = () => { imgBox.style.display = "none"; }; 
                 imgElem.src = IMAGE_BASE_URL + "1_" + formattedKat + ".jpg";
             } else {
