@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v7.3</title>
-    <link rel="stylesheet" href="style.css?v=7.3">
+    <title>B2B TERMINAL v7.4</title>
+    <link rel="stylesheet" href="style.css?v=7.4">
     <meta name="theme-color" content="#000000">
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
@@ -19,8 +19,11 @@
         
         <header id="main-header">
             <div class="header-title-bar">
-                <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI B2B v7.3</div>
-                <div id="network-status" class="status-dot net-online"></div>
+                <img src="logo.png" alt="Logo" id="header-logo">
+                <div class="header-status-group">
+                    <span class="version-text">v7.4</span>
+                    <div id="network-status" class="status-dot net-online"></div>
+                </div>
             </div>
             
             <div class="header-main-row" id="header-main-row" style="display: none;">
@@ -34,9 +37,6 @@
 
         <main id="main-view">
             <section id="view-user-selection" class="view-section" style="display: flex;">
-                <div class="main-logo-container">
-                    <img src="logo.png" alt="Logo" id="main-logo">
-                </div>
                 <div id="user-list" class="user-grid"></div>
             </section>
 
@@ -141,6 +141,6 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=7.3"></script>
+    <script src="app.js?v=7.4"></script>
 </body>
 </html>
