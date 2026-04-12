@@ -26,7 +26,7 @@ let currentIdleContext = null;
 // --- HISTORY API ---
 function getCurrentViewId() {
     const views = ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'];
-    return views.find(v => document.getElementById(v).style.display === 'flex');
+    return views.find(v => document.getElementById(v).style.display !== 'none');
 }
 
 window.addEventListener('popstate', (event) => {
@@ -248,13 +248,6 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręcznego wprowadzania Aktywny");
 };
 
-// NOWOŚĆ v1.1: Obsługa przycisku odświeżania bazy
-document.getElementById('btn-refresh-orders').onclick = async function() {
-    this.classList.add('spin-anim');
-    await loadOrders();
-    this.classList.remove('spin-anim');
-};
-
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
@@ -269,17 +262,32 @@ function getInitials(name) {
 }
 
 const DISTINCT_COLORS = [
-    { hue: 210, saturation: 90, lightness: 55 },
-    { hue: 350, saturation: 85, lightness: 55 },
-    { hue: 130, saturation: 75, lightness: 45 },
-    { hue: 280, saturation: 80, lightness: 60 },
-    { hue: 25,  saturation: 95, lightness: 50 },
-    { hue: 180, saturation: 85, lightness: 40 },
-    { hue: 320, saturation: 80, lightness: 60 },
-    { hue: 75,  saturation: 80, lightness: 40 },
-    { hue: 240, saturation: 85, lightness: 65 },
-    { hue: 0,   saturation: 0,  lightness: 45 } 
+    { hue: 210, saturation: 90, lightness: 55 }, 
+    { hue: 350, saturation: 85, lightness: 55 }, 
+    { hue: 130, saturation: 75, lightness: 45 }, 
+    { hue: 280, saturation: 80, lightness: 60 }, 
+    { hue: 25,  saturation: 95, lightness: 50 }, 
+    { hue: 180, saturation: 85, lightness: 40 }, 
+    { hue: 320, saturation: 80, lightness: 60 }, 
+    { hue: 75,  saturation: 80, lightness: 40 }, 
+    { hue: 240, saturation: 85, lightness: 65 }, 
+    { hue: 0,   saturation: 0,  lightness: 45 }  
 ];
+
+function getColorComponents(name) {
+    if (!name) return DISTINCT_COLORS[0];
+    const cleanName = name.trim().toUpperCase();
+    
+    if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
+        return { hue: 45, saturation: 100, lightness: 50 }; 
+    }
+    
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return DISTINCT_COLORS[Math.abs(hash) % DISTINCT_COLORS.length];
+}
 
 async function initApp() {
     stopIdleTimer();
@@ -642,6 +650,9 @@ document.getElementById('btn-torch').onclick = async () => {
     catch(e) { torchOn = false; alert("Latarka niedostępna"); }
 };
 
+// ==========================================
+// FIX KAMERY (Soft Cold Start)
+// ==========================================
 async function startScannerView() {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
@@ -673,66 +684,64 @@ async function startScannerView() {
             html5QrCode.clear(); 
         }
 
-        if (isFirstScanPerOrder) {
-            document.getElementById('scanner-loader').style.display = 'flex';
-            try {
-                await html5QrCode.start({ facingMode: "environment" }, config, () => {});
-                await new Promise(r => setTimeout(r, 1200)); 
-                await html5QrCode.stop(); 
-            } catch (err) {}
-            
-            isFirstScanPerOrder = false;
+        // 1. Zawsze pokazujemy Loader przed startem kamery
+        document.getElementById('scanner-loader').style.display = 'flex';
+        
+        let scanMatched = false; 
+        let errorCooldown = false; 
+
+        // 2. Startujemy stream TYLKO RAZ
+        await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+            if (scanMatched || errorCooldown) return; 
+
+            if(text.trim() === String(targetItem.ean)) {
+                scanMatched = true;
+                stopIdleTimer(); 
+                
+                triggerScanVisual('success'); 
+                playSound('success');
+                
+                setTimeout(() => {
+                    if (html5QrCode.isScanning) {
+                        html5QrCode.stop().then(() => {
+                            if(targetItem.pozostalo > 1) { 
+                                openNumpadModal();
+                            } else { sendVal(1, "scan"); } 
+                        }).catch(e => console.error("Kamera stop error", e));
+                    }
+                }, 600); 
+                
+            } else { 
+                errorCooldown = true; 
+                stopIdleTimer(); 
+                
+                playSound('error');
+                triggerScanVisual('error');
+                showError("BŁĘDNY PRODUKT!", true); 
+                
+                setTimeout(() => {
+                    errorCooldown = false;
+                    // FIX TIMERA: Sprawdza !== 'none', a nie flex/block
+                    if (document.getElementById('scanner-box').style.display !== 'none') {
+                        startIdleTimer('scan');
+                    }
+                }, 2000); 
+            }
+        });
+
+        // 3. Po udanym starcie odczekujemy i zdejmujemy loader (Soft Cold Start)
+        setTimeout(() => {
             document.getElementById('scanner-loader').style.display = 'none';
-        }
-
-        setTimeout(async () => {
-            if(sv)classList.add('scanner-ready');
+            if(sv) sv.classList.add('scanner-ready');
             startIdleTimer('scan');
+        }, isFirstScanPerOrder ? 1200 : 300);
 
-            let scanMatched = false; 
-            let errorCooldown = false; 
-
-            await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-                if (scanMatched || errorCooldown) return; 
-
-                if(text.trim() === String(targetItem.ean)) {
-                    scanMatched = true;
-                    stopIdleTimer(); 
-                    
-                    triggerScanVisual('success'); 
-                    playSound('success');
-                    
-                    setTimeout(() => {
-                        if (html5QrCode.isScanning) {
-                            html5QrCode.stop().then(() => {
-                                if(targetItem.pozostalo > 1) { 
-                                    openNumpadModal();
-                                } else { sendVal(1, "scan"); } 
-                            }).catch(e => console.error("Kamera stop error", e));
-                        }
-                    }, 600); 
-                    
-                } else { 
-                    errorCooldown = true; 
-                    stopIdleTimer(); 
-                    
-                    playSound('error');
-                    triggerScanVisual('error');
-                    showError("BŁĘDNY PRODUKT!", true); 
-                    
-                    setTimeout(() => {
-                        errorCooldown = false;
-                        if (document.getElementById('scanner-box').style.display === 'block') {
-                            startIdleTimer('scan');
-                        }
-                    }, 2000); 
-                }
-            });
-        }, 100);
+        isFirstScanPerOrder = false;
 
     } catch(e) { 
         document.getElementById('scanner-loader').style.display = 'none';
-        showError("Błąd kamery. Odśwież stronę.", true); 
+        console.error("Camera Init Error:", e);
+        showError("Błąd kamery. Odśwież stronę lub sprawdź uprawnienia.", true); 
     }
 }
 
