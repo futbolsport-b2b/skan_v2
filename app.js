@@ -23,7 +23,6 @@ function startIdleTimer(context) {
         } else if (currentIdleContext === 'numpad') {
             speakVoice("Wprowadź ilość");
         }
-        // Zapętlenie by przypominał regularnie, dopóki operator nic nie zrobi
         startIdleTimer(currentIdleContext); 
     }, 10000); 
 }
@@ -233,9 +232,7 @@ function setLoadingState(active) {
 }
 
 async function fetchNext(offset) {
-    stopIdleTimer(); 
-    showView('task-panel'); 
-    setLoadingState(true); 
+    stopIdleTimer(); showView('task-panel'); setLoadingState(true); 
     try {
         const res = await fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&action=get_next&offset=${offset}`);
         const data = await res.json();
@@ -292,9 +289,9 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-// --- SKANER Z ANIMACJĄ I KONTROLĄ BŁĘDÓW ---
+// --- SKANER Z POPRAWKĄ COLD-START ---
 function triggerScanVisual(type) {
-    const sv = document.getElementById("scanner-box"); // Działamy na rodzicu by kolorować natywne rogi
+    const sv = document.getElementById("scanner-box");
     if(sv) {
         sv.classList.remove('scan-success', 'scan-error'); void sv.offsetWidth; 
         sv.classList.add(type === 'success' ? 'scan-success' : 'scan-error');
@@ -316,18 +313,17 @@ async function startScannerView() {
     document.getElementById("btn-torch").classList.remove('active');
     torchOn = false; 
     
-    // Uruchomienie dedykowanego timera do skanera
+    // KLUCZOWA POPRAWKA "COLD START": 
+    // Czekamy 400ms, aby przeglądarka zdążyła w pełni wyrenderować UI,
+    // a fizyczna soczewka aparatu zdążyła się wyostrzyć na świetle,
+    // zanim zmusimy algorytm do szukania w ciemnych/rozmazanych klatkach.
+    await new Promise(resolve => setTimeout(resolve, 400));
+
     startIdleTimer('scan'); 
 
     const windowWidth = window.innerWidth;
     const boxWidth = Math.min(windowWidth * 0.85, 380); 
     const boxHeight = 150; 
-    
-    const sv = document.getElementById("scanner-visual");
-    if(sv) {
-        sv.style.width = boxWidth + "px";
-        sv.style.height = boxHeight + "px";
-    }
 
     const config = {
         fps: 15, 
@@ -341,14 +337,14 @@ async function startScannerView() {
         if (html5QrCode.isScanning) await html5QrCode.stop();
         
         let scanMatched = false; 
-        let errorCooldown = false; // Zabezpieczenie przed "karabinem" błędów
+        let errorCooldown = false; 
 
         await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
             if (scanMatched) return;
 
             if(text.trim() === String(targetItem.ean)) {
                 scanMatched = true;
-                stopIdleTimer(); // Zabicie timera po udanym skanie
+                stopIdleTimer(); 
                 
                 triggerScanVisual('success'); 
                 playSound('success');
@@ -370,11 +366,10 @@ async function startScannerView() {
                     
                     playSound('error');
                     triggerScanVisual('error');
-                    showError("BŁĘDNY PRODUKT!", true); // true ukrywa głos TTS
+                    showError("BŁĘDNY PRODUKT!", true); 
                     
                     setTimeout(() => {
                         errorCooldown = false;
-                        // Wznów timer skanera jeśli operator wciąż jest na tym widoku
                         if (document.getElementById('scanner-box').style.display === 'block') {
                             startIdleTimer('scan');
                         }
@@ -411,26 +406,25 @@ function openNumpadModal() {
         speakVoice(`Pobierz ${targetItem.pozostalo} sztuk`);
     }
     
-    // Uruchamiamy odliczanie tylko dla Numpada
     startIdleTimer('numpad');
 }
 
 // --- WYSYŁKA DANYCH ---
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
-    stopIdleTimer(); // Zabijamy timer wpisywania ilości
+    stopIdleTimer(); 
     
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
     if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // Został wywołany z panelu, wracamy do panelu (bez timera)
+        // powrót do karty
     } else {
         startScannerView(); 
     }
 };
 
 function sendVal(q, mode) {
-    stopIdleTimer(); // Ubicie wszystkich timerów w momencie zapisu
+    stopIdleTimer(); 
     const btnOk = document.getElementById("btn-qty-ok");
     btnOk.classList.add("is-loading"); btnOk.disabled = true;
 
@@ -465,7 +459,7 @@ document.getElementById("btn-qty-ok").onclick = () => {
     let val = parseInt(currentInputValue);
     if(val <= 0 || isNaN(val) || val > targetItem.pozostalo) { 
         flashDisplayError(); 
-        if (document.getElementById("qty-modal").style.display === "flex") startIdleTimer('numpad'); // Wznów odliczanie po błędzie
+        if (document.getElementById("qty-modal").style.display === "flex") startIdleTimer('numpad'); 
         return; 
     }
     
@@ -473,12 +467,12 @@ document.getElementById("btn-qty-ok").onclick = () => {
     sendVal(val, mode); 
 };
 
-// Aktualizacja Numpada resetuje odliczanie bezczynności klawiatury!
+// Numpad
 function updateDisplay(val) { 
     currentInputValue = String(val); 
     document.getElementById("qty-input-display").innerText = currentInputValue; 
     if (document.getElementById("qty-modal").style.display === "flex") {
-        startIdleTimer('numpad'); // Ktoś coś wpisuje -> resetujemy 10 sekund
+        startIdleTimer('numpad'); 
     }
 }
 document.querySelectorAll('.np-btn[data-val]').forEach(b => { b.onclick = () => { let newVal = currentInputValue === "0" ? b.dataset.val : currentInputValue + b.dataset.val; if(parseInt(newVal) > targetItem.pozostalo) flashDisplayError(); else updateDisplay(newVal); }; });
@@ -489,7 +483,7 @@ document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetIte
 
 // --- BŁĘDY I ZAKOŃCZENIE ---
 function showView(id) {
-    stopIdleTimer(); // Zawsze czyść timer przy zmianie widoku
+    stopIdleTimer(); 
     ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => { document.getElementById(v).style.display = (v === id) ? 'block' : 'none'; });
     const brandTitle = document.getElementById('brand-title');
     if (id === 'task-panel' || id === 'scanner-box') brandTitle.style.display = 'none'; else brandTitle.style.display = 'block';
