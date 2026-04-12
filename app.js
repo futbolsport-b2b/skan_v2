@@ -5,7 +5,6 @@ let currentUser = null, currentOrderID = null, targetItem = null;
 let currentOffset = 0, currentInputValue = "0", isProcessing = false; 
 let isManualUnlocked = sessionStorage.getItem('manualUnlock') === 'true'; 
 
-// FLAGA DO KALIBRACJI APARATU (COLD START)
 let isFirstScanPerOrder = true; 
 
 const html5QrCode = new Html5Qrcode("reader");
@@ -13,7 +12,6 @@ const html5QrCode = new Html5Qrcode("reader");
 let audioCtx = null;
 let wakeLock = null;
 
-// --- ZAAWANSOWANE ZARZĄDZANIE TIMEREM BEZCZYNNOŚCI ---
 let idleTimer = null;
 let currentIdleContext = null; 
 
@@ -39,7 +37,6 @@ function stopIdleTimer() {
     }
 }
 
-// --- WAKELOCK ---
 async function requestWakeLock() {
     try {
         if ('wakeLock' in navigator) {
@@ -52,7 +49,6 @@ document.addEventListener('visibilitychange', () => {
     if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
 
-// --- AUDIO & TTS ---
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -109,7 +105,6 @@ function playSound(type) {
     }
 }
 
-// --- WERYFIKACJA EAN ---
 function isEanValid(ean) {
     if (ean === null || ean === undefined) return false;
     const str = String(ean).trim().toUpperCase();
@@ -155,7 +150,6 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
 };
 
-// --- START APP ---
 window.onload = () => {
     updateLockUI();
     initApp();
@@ -194,6 +188,13 @@ function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     document.getElementById("display-user-name").innerText = user;
     showView('view-orders-dashboard'); loadOrders();
+
+    // WYZWOLENIE ZGODY NA APARAT PRZY LOGOWANIU (WARM-UP)
+    Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length) console.log("Kamera autoryzowana");
+    }).catch(err => {
+        console.warn("Brak uprawnień kamery", err);
+    });
 }
 
 async function loadOrders() {
@@ -222,7 +223,7 @@ async function loadOrders() {
 
 function startOrder(id, itemsCount) {
     currentOrderID = id;
-    isFirstScanPerOrder = true; // Zresetowanie flagi kalibracji po wejściu w nowe zamówienie
+    isFirstScanPerOrder = true; // Zresetowanie kalibracji dla nowego zamówienia
 
     document.getElementById("header-main-row").style.display = "flex";
     document.getElementById("order-val").innerText = id;
@@ -295,7 +296,6 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-// --- SKANER (KALIBRACJA OPTYKI COLD-START) ---
 function triggerScanVisual(type) {
     const sv = document.getElementById("scanner-box");
     if(sv) {
@@ -350,20 +350,14 @@ async function startScannerView() {
             document.getElementById('scanner-loader').style.display = 'flex';
             
             try {
-                // Uruchamiamy aparat, ale z pustą funkcją nasłuchu. 
-                // Pozwala to soczewce wyostrzyć obraz bez obciążania procesora analizą zamazanych klatek.
                 await html5QrCode.start({ facingMode: "environment" }, config, () => {});
-                
-                // Czekamy 1.2 sekundy na fizyczne wyostrzenie obrazu
                 await new Promise(r => setTimeout(r, 1200)); 
-                
-                // Ubijamy ślepy proces
                 await html5QrCode.stop(); 
             } catch (err) {
                 console.warn("Kalibracja pominięta:", err);
             }
             
-            isFirstScanPerOrder = false; // Zapamiętujemy, że aparat w tym zamówieniu jest już ostry
+            isFirstScanPerOrder = false;
             document.getElementById('scanner-loader').style.display = 'none';
         }
 
@@ -422,7 +416,6 @@ document.getElementById("btn-scan-item").onclick = () => {
     startScannerView();
 };
 
-// --- TRYB RĘCZNY ---
 document.getElementById('btn-manual-add').onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     if (!isManualUnlocked && hasEan) return; 
@@ -454,7 +447,7 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
     if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // powrót do karty
+        // powrót
     } else {
         startScannerView(); 
     }
@@ -504,7 +497,6 @@ document.getElementById("btn-qty-ok").onclick = () => {
     sendVal(val, mode); 
 };
 
-// Numpad
 function updateDisplay(val) { 
     currentInputValue = String(val); 
     document.getElementById("qty-input-display").innerText = currentInputValue; 
@@ -518,7 +510,6 @@ document.getElementById("np-del").onclick = () => { let newVal = currentInputVal
 document.querySelectorAll('.btn-quick[data-add]').forEach(btn => { btn.onclick = () => { let newVal = parseInt(currentInputValue) + parseInt(btn.getAttribute('data-add')); if (newVal > targetItem.pozostalo) { flashDisplayError(); btn.classList.add('flash-error'); setTimeout(() => { btn.classList.remove('flash-error'); }, 300); } else { updateDisplay(newVal); } }; });
 document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
 
-// --- BŁĘDY I ZAKOŃCZENIE ---
 function showView(id) {
     stopIdleTimer(); 
     ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => { document.getElementById(v).style.display = (v === id) ? 'block' : 'none'; });
