@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v4.4</title>
-    <link rel="stylesheet" href="style.css?v=4.4">
+    <title>B2B TERMINAL v4.5</title>
+    <link rel="stylesheet" href="style.css?v=4.5">
     <meta name="theme-color" content="#000000">
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
@@ -14,7 +14,7 @@
     
     <div class="app-container">
         <header id="main-header">
-            <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI B2B ver. 4.4</div>
+            <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI B2B VER. 4.5</div>
             <div class="header-main-row" id="header-main-row" style="display: none;">
                 <div id="order-val"></div>
                 <button id="btn-finish-icon">ZAKOŃCZ</button>
@@ -24,14 +24,20 @@
 
         <main id="main-view">
             <section id="view-user-selection">
-                <div class="main-logo-container"><img src="logo.png" alt="Logo" id="main-logo"></div>
+                <div class="main-logo-container">
+                    <img src="logo.png" alt="Logo" id="main-logo">
+                </div>
                 <div id="user-list" class="user-grid"></div>
             </section>
 
             <section id="view-orders-dashboard" style="display:none;">
                 <div class="dashboard-ctrl">
                     <button id="btn-logout" class="btn-icon-modern">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 5 12 10 7"></polyline><line x1="19" y1="12" x2="5" y2="12"></line></svg>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                            <polyline points="10 17 5 12 10 7"></polyline>
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                        </svg>
                     </button>
                     <span id="display-user-name">---</span>
                     <button id="btn-manual-lock" class="btn-icon-modern lock-btn">
@@ -42,7 +48,9 @@
             </section>
 
             <section id="scanner-box" style="display:none;">
-                <button id="btn-back-scan" class="scan-ui-btn">⬅</button>
+                <button id="btn-back-scan" class="scan-ui-btn">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
                 <button id="btn-torch" class="scan-ui-btn">🔦</button>
                 <div id="scanner-instruction">
                     <div id="target-kat-display"><span id="target-kat-val">---</span> | ROZ: <b id="target-size-val">---</b></div>
@@ -70,9 +78,9 @@
                         <div id="task-notes-row" style="display:none;">UWAGI: <b id="task-notes">---</b></div>
                     </div>
                     <div class="task-action-row">
-                        <button id="btn-scan-item" class="btn-primary">SKANUJ</button>
+                        <button id="btn-scan-item" class="btn-primary">SKANUJ PRODUKT</button>
                         <button id="btn-manual-add" class="btn-manual-trigger" disabled>
-                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
                         </button>
                     </div>
                     <div id="loading-bar-wrapper"><div id="loading-bar-inner"></div></div>
@@ -82,9 +90,13 @@
 
         <div id="qty-modal" style="display:none;">
             <div class="sheet">
-                <div class="sheet-header"><h2 id="qty-name">---</h2></div>
+                <div class="sheet-header"><h2 id="qty-name">---</h2><span id="qty-kat-val">---</span></div>
                 <div class="remain-badge">Pozostało: <b id="qty-remain">0</b></div>
-                <div class="quick-add-row"><button class="btn-quick" data-add="1">+1</button><button class="btn-quick" data-add="5">+5</button><button class="btn-quick" id="btn-quick-max">MAX</button></div>
+                <div class="quick-add-row">
+                    <button class="btn-quick" data-add="1">+1</button>
+                    <button class="btn-quick" data-add="5">+5</button>
+                    <button class="btn-quick" id="btn-quick-max">MAX</button>
+                </div>
                 <div id="qty-input-display" class="custom-input-display">0</div>
                 <div class="custom-numpad">
                     <button class="np-btn" data-val="1">1</button><button class="np-btn" data-val="2">2</button><button class="np-btn" data-val="3">3</button>
@@ -92,10 +104,13 @@
                     <button class="np-btn" data-val="7">7</button><button class="np-btn" data-val="8">8</button><button class="np-btn" data-val="9">9</button>
                     <button class="np-btn np-action" id="np-clear">C</button><button class="np-btn" data-val="0">0</button><button class="np-btn np-action" id="np-del">⌫</button>
                 </div>
-                <div class="modal-action-row"><button id="btn-qty-cancel" class="btn-cancel">ANULUJ</button><button id="btn-qty-ok" class="btn-success">ZATWIERDŹ</button></div>
+                <div class="modal-action-row">
+                    <button id="btn-qty-cancel" class="btn-cancel">ANULUJ</button>
+                    <button id="btn-qty-ok" class="btn-success">ZATWIERDŹ</button>
+                </div>
             </div>
         </div>
     </div>
-    <script src="app.js?v=4.4"></script>
+    <script src="app.js?v=4.5"></script>
 </body>
 </html>
