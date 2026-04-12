@@ -52,7 +52,9 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .order-meta-group { display: flex; align-items: center; gap: 15px; }
 .order-percent { font-size: 16px; font-weight: 800; opacity: 0.9; width: 45px; text-align: right; }
 .status-badge { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 15px; color: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-.status-N { background-color: var(--accent-blue); color: #fff; } .status-W { background-color: var(--accent-yellow); } .status-U { background-color: var(--accent-green); }
+.status-N { background-color: var(--accent-blue); color: #fff; box-shadow: 0 0 15px rgba(10, 132, 255, 0.4); }
+.status-W { background-color: var(--accent-yellow); box-shadow: 0 0 15px rgba(255, 214, 10, 0.4); }
+.status-U { background-color: var(--accent-green); box-shadow: 0 0 15px rgba(50, 215, 75, 0.4); }
 
 /* ELASTYCZNA KARTA PRODUKTU */
 #task-panel { display: flex; flex-direction: column; height: 100%; overflow: hidden; padding-bottom: env(safe-area-inset-bottom); }
@@ -94,13 +96,13 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 @keyframes progressMove { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 
 /* ============================================================== */
-/* SKANER - NOWA LOGIKA WIZUALNA (Brak podwójnych ramek, Animacja)*/
+/* SKANER - ŻELAZNA BLOKADA ZDUBLOWANYCH RAMEK                    */
 /* ============================================================== */
 #scanner-box { position: relative; width: 100%; flex-grow: 1; background: #000; overflow: hidden; display: flex; flex-direction: column; }
 
-/* Ukrywamy śmieci rysowane przez bibliotekę */
-#reader svg path { display: none !important; stroke: transparent !important; }
-#reader svg rect { stroke: transparent !important; }
+/* 1. Całkowite wymuszone ukrycie elementów renderowanych przez HTML5-QRCode */
+#qr-shaded-region > div { display: none !important; border: none !important; opacity: 0 !important; visibility: hidden !important; }
+#reader > div > svg { display: none !important; opacity: 0 !important; visibility: hidden !important; }
 
 #reader { width: 100% !important; flex-grow: 1 !important; display: flex;} 
 #reader video { object-fit: cover !important; width: 100%; height: 100%; }
@@ -110,7 +112,7 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 #target-kat-display { font-size: 22px; font-weight: 900; margin-top: 5px; display: flex; justify-content: center; align-items: center; gap: 10px; }
 #target-kat-val { color: var(--accent-blue); } #target-size-val { color: var(--error); }
 
-/* Własny celownik. Domyslnie ukryty (opacity 0) aż aparat nie złapie ostrości */
+/* 2. Nasz elegancki, własny celownik (ukryty do czasu wyostrzenia aparatu) */
 #scanner-visual { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; pointer-events: none; width: 300px; height: 150px; opacity: 0; transition: opacity 0.4s ease; }
 #scanner-visual.scanner-ready { opacity: 1; }
 
@@ -128,13 +130,9 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 #btn-back-scan { left: 20px; } #btn-torch { right: 20px; }
 #btn-torch.active { background: #fff; color: #000; box-shadow: 0 0 15px #fff; }
 
-/* Kolorowanie przy sukcesie/błędzie przez rodzica */
-#scanner-box.scan-success #qr-shaded-region div { border-color: var(--accent-green) !important; }
-#scanner-box.scan-error #qr-shaded-region div { border-color: var(--error) !important; }
-
+/* Reakcja naszego celownika na skan */
 #scanner-box.scan-success #scanner-visual .corner { border-color: var(--accent-green); }
 #scanner-box.scan-error #scanner-visual .corner { border-color: var(--error); }
-
 #scanner-box.scan-success #laser-line { background: var(--accent-green); box-shadow: 0 0 15px var(--accent-green); }
 #scanner-box.scan-error #laser-line { background: var(--error); box-shadow: 0 0 15px var(--error); }
 
