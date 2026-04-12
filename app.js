@@ -10,9 +10,11 @@ let isFirstScanPerOrder = true;
 let globalOrders = []; 
 let activeDashboardTab = 'todo'; 
 
-// --- NOWOŚĆ v8.7: Zmienne dla Wyszukiwarki Modalnej ---
 let activeSearchQuery = "";
 let tempSearchQuery = "";
+
+// Globalny słownik przechowujący kolory dla spójności między ekranami
+let userColorsMap = {}; 
 
 const html5QrCode = new Html5Qrcode("reader");
 
@@ -29,7 +31,6 @@ function getCurrentViewId() {
 }
 
 window.addEventListener('popstate', (event) => {
-    // Zablokuj cofanie jeśli otwarty jest modal wyszukiwarki
     if (document.getElementById('search-modal').style.display === 'flex') {
         document.getElementById('search-modal').style.display = 'none';
         const currentView = getCurrentViewId();
@@ -261,35 +262,19 @@ function getInitials(name) {
     return name.substring(0, 2).toUpperCase();
 }
 
-// v8.7: NOWA, LEPSZA PALETA
+// v1.0: Sztywna, silnie kontrastowa paleta kolorów
 const DISTINCT_COLORS = [
-    { hue: 210, saturation: 90, lightness: 60 }, // Niebieski
-    { hue: 350, saturation: 85, lightness: 60 }, // Karmazynowy
-    { hue: 130, saturation: 75, lightness: 50 }, // Zielony
-    { hue: 280, saturation: 80, lightness: 65 }, // Fioletowy
-    { hue: 30,  saturation: 90, lightness: 55 }, // Pomarańczowy
-    { hue: 180, saturation: 85, lightness: 45 }, // Morski
-    { hue: 320, saturation: 80, lightness: 65 }, // Różowy
-    { hue: 80,  saturation: 80, lightness: 45 }, // Limonkowy
-    { hue: 250, saturation: 85, lightness: 65 }, // Indigo
-    { hue: 0,   saturation: 0,  lightness: 55 }  // Szary
+    { hue: 210, saturation: 90, lightness: 55 }, // 0: Czysty Niebieski
+    { hue: 350, saturation: 85, lightness: 55 }, // 1: Karmazynowy Czerwony
+    { hue: 130, saturation: 75, lightness: 45 }, // 2: Głęboki Zielony
+    { hue: 280, saturation: 80, lightness: 60 }, // 3: Fioletowy
+    { hue: 25,  saturation: 95, lightness: 50 }, // 4: Pomarańczowy
+    { hue: 180, saturation: 85, lightness: 40 }, // 5: Morski / Turkus
+    { hue: 320, saturation: 80, lightness: 60 }, // 6: Magentowy / Różowy
+    { hue: 75,  saturation: 80, lightness: 40 }, // 7: Limonkowy
+    { hue: 240, saturation: 85, lightness: 65 }, // 8: Jasny Indigo
+    { hue: 0,   saturation: 0,  lightness: 45 }  // 9: Ciemny Szary
 ];
-
-function getColorComponents(name) {
-    if (!name) return DISTINCT_COLORS[0];
-    const cleanName = name.trim().toUpperCase();
-    
-    // v8.7 FIX: Twarda reguła dla konkretnego operatora (Złoty Kolor)
-    if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
-        return { hue: 45, saturation: 100, lightness: 50 }; 
-    }
-    
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return DISTINCT_COLORS[Math.abs(hash) % DISTINCT_COLORS.length];
-}
 
 async function initApp() {
     stopIdleTimer();
@@ -311,14 +296,24 @@ async function initApp() {
 function renderUsers(users) {
     const list = document.getElementById("user-list");
     list.innerHTML = "";
+    userColorsMap = {}; 
     
-    users.forEach((u) => {
+    users.forEach((u, index) => {
         const btn = document.createElement("button");
         btn.className = "btn-user";
         
         const initials = getInitials(u.name);
         
-        const colorComp = getColorComponents(u.name);
+        // Zawsze złoty dla Ł.C.
+        let colorComp;
+        if (initials === "Ł.C." || initials === "ŁC" || initials === "Ł. C.") {
+            colorComp = { hue: 45, saturation: 100, lightness: 50 }; 
+        } else {
+            colorComp = DISTINCT_COLORS[index % DISTINCT_COLORS.length];
+        }
+        
+        userColorsMap[u.name] = colorComp;
+
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
         
@@ -369,8 +364,8 @@ function renderUsers(users) {
 function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     
-    // v8.7 FIX: Kolorowe imię, brak kółka.
-    const colorComp = getColorComponents(user);
+    // Odczytanie koloru z mapy i przypisanie do imienia
+    const colorComp = userColorsMap[user] || { hue: 210, saturation: 90, lightness: 60 };
     const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
     
     const nameDisplay = document.getElementById("display-user-name");
@@ -378,7 +373,7 @@ function selectUser(user) {
     nameDisplay.style.color = baseColor;
     
     activeDashboardTab = 'todo';
-    activeSearchQuery = ""; // Reset filtra
+    activeSearchQuery = ""; 
     document.getElementById('btn-toggle-search').classList.remove('active-filter');
     
     switchTab('todo'); 
@@ -389,7 +384,7 @@ function selectUser(user) {
 }
 
 // =========================================================
-// WYSZUKIWARKA & CUSTOM NUMPAD MODAL (v8.7 FIX)
+// WYSZUKIWARKA & CUSTOM NUMPAD MODAL
 // =========================================================
 
 function switchTab(tab) {
@@ -410,23 +405,19 @@ function updateSearchDisplay() {
     }
 }
 
-// Przycisk Lupy pomiędzy zakładkami
 document.getElementById('btn-toggle-search').onclick = (e) => {
     e.stopPropagation();
     if (activeSearchQuery !== "") {
-        // Jeśli jest filtr (czerwona lupa), kliknięcie go czyści
         activeSearchQuery = "";
         document.getElementById('btn-toggle-search').classList.remove('active-filter');
         renderOrdersFromGlobal();
     } else {
-        // Otwórz modal z numpadem z dołu
         tempSearchQuery = "";
         updateSearchDisplay();
         document.getElementById('search-modal').style.display = 'flex';
     }
 };
 
-// Klawisze w wyszukiwarce numerycznej
 document.querySelectorAll('.np-btn-search[data-val]').forEach(btn => {
     btn.onclick = (e) => {
         e.stopPropagation();
@@ -445,11 +436,10 @@ document.getElementById('btn-search-cancel').onclick = () => {
     document.getElementById('search-modal').style.display = 'none';
 };
 
-// Zatwierdzenie wyszukiwania
 document.getElementById('btn-search-ok').onclick = () => {
     if(tempSearchQuery.trim() !== "") {
         activeSearchQuery = tempSearchQuery.trim();
-        document.getElementById('btn-toggle-search').classList.add('active-filter'); // Zapal czerwoną lupę
+        document.getElementById('btn-toggle-search').classList.add('active-filter'); 
     }
     document.getElementById('search-modal').style.display = 'none';
     renderOrdersFromGlobal();
@@ -478,7 +468,6 @@ function renderOrdersFromGlobal() {
     const container = document.getElementById("orders-list-container");
     container.innerHTML = "";
 
-    // Używamy zmiennej z potwierdzonego wyszukiwania
     const searchQuery = activeSearchQuery.toLowerCase();
 
     let filtered = globalOrders.filter(o => {
