@@ -1,16 +1,16 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzuPG3EedNJ6R-e63x5cAyjxplTVZi3ArrE8SPBzLzaVzagH4f8d9FeXcN2Efw12TrA/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyp_iGG_iqwjcE5KTtUZYSm15be7B0l41Noi7tk2byvC9Ps5u2GQVzcdSnVsMnENa1g/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
 let currentOffset = 0, currentInputValue = "0", isProcessing = false; 
-let isManualUnlocked = sessionStorage.getItem('manualUnlock') === 'true'; // Pamięć kłódki
+let isManualUnlocked = sessionStorage.getItem('manualUnlock') === 'true'; 
 const html5QrCode = new Html5Qrcode("reader");
 
 let audioCtx = null;
 let wakeLock = null;
 let scanIdleTimer = null; 
 
-// --- WAKELOCK (Ekran nie gaśnie) ---
+// --- WAKELOCK ---
 async function requestWakeLock() {
     try {
         if ('wakeLock' in navigator) {
@@ -74,21 +74,40 @@ function playSound(type) {
     }
 }
 
-// --- KŁÓDKA ---
+// --- INTELIGENTNA KŁÓDKA I DETEKCJA EAN ---
 function updateLockUI() {
     const btn = document.getElementById('btn-manual-lock');
     const iconClosed = document.getElementById('icon-lock-closed');
     const iconOpen = document.getElementById('icon-lock-open');
-    const manualAddBtn = document.getElementById('btn-manual-add');
     
+    // Status globalnej kłódki na pasku
     if (isManualUnlocked) {
         btn.classList.add('unlocked');
         iconClosed.style.display = 'none'; iconOpen.style.display = 'block';
-        if (manualAddBtn) manualAddBtn.disabled = false;
     } else {
         btn.classList.remove('unlocked');
         iconClosed.style.display = 'block'; iconOpen.style.display = 'none';
-        if (manualAddBtn) manualAddBtn.disabled = true;
+    }
+
+    // Logika przycisków akcji na karcie produktu
+    const manualAddBtn = document.getElementById('btn-manual-add');
+    const scanBtn = document.getElementById('btn-scan-item');
+    
+    if (manualAddBtn && scanBtn) {
+        // Detekcja braku EAN (Zabezpiecza przed pustymi komórkami i kreskami)
+        const isEanMissing = targetItem && (!targetItem.ean || targetItem.ean.trim() === "" || targetItem.ean.trim() === "---");
+
+        if (isEanMissing) {
+            // BRAK EAN: Zablokuj aparat, wymuś tryb ręczny
+            scanBtn.disabled = true;
+            scanBtn.innerText = "BRAK KODU EAN";
+            manualAddBtn.disabled = false; 
+        } else {
+            // EAN JEST: Włącz aparat, a ręczny uzależnij od kłódki
+            scanBtn.disabled = false;
+            scanBtn.innerText = "SKANUJ PRODUKT";
+            manualAddBtn.disabled = !isManualUnlocked; 
+        }
     }
 }
 
@@ -127,7 +146,7 @@ function renderUsers(users) {
         btn.className = "btn-user";
         btn.innerHTML = `<div class="user-avatar-icon">👤</div><span>${u}</span>`;
         btn.onclick = () => {
-            requestWakeLock(); // Odblokowanie wygaszania ekranu po logowaniu
+            requestWakeLock(); 
             selectUser(u);
         };
         list.appendChild(btn);
@@ -180,7 +199,7 @@ function setLoadingState(active) {
 }
 
 async function fetchNext(offset) {
-    stopIdleTimer(); showView('task-panel'); setLoadingState(true); updateLockUI();
+    stopIdleTimer(); showView('task-panel'); setLoadingState(true); 
     try {
         const res = await fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&action=get_next&offset=${offset}`);
         const data = await res.json();
@@ -208,6 +227,9 @@ async function fetchNext(offset) {
                 imgElem.onload = () => { imgBox.style.display = "flex"; }; imgElem.onerror = () => { imgBox.style.display = "none"; }; 
                 imgElem.src = IMAGE_BASE_URL + "1_" + String(targetItem.nr_kat).trim().replace(/\s+/g, '_') + ".jpg";
             } else { imgBox.style.display = "none"; }
+            
+            // AKTUALIZACJA UI PO POBRANIU PRODUKTU (Ważne dla inteligentnego odcięcia EAN)
+            updateLockUI();
             setLoadingState(false);
         } else {
             playSound('success'); speakVoice("Zamówienie kompletne!"); alert("ZAMÓWIENIE ZREALIZOWANE");
@@ -216,7 +238,7 @@ async function fetchNext(offset) {
     } catch(e) { setLoadingState(false); showError("Błąd wyświetlania danych"); }
 }
 
-// --- SKANER (Z POTĘŻNYM DOPALACZEM ML) ---
+// --- SKANER ---
 function startIdleTimer() {
     stopIdleTimer(); scanIdleTimer = setTimeout(() => { speakVoice("Skanuj produkt"); startIdleTimer(); }, 10000);
 }
@@ -245,13 +267,13 @@ async function startScannerView() {
     document.getElementById("btn-torch").classList.remove('active');
     torchOn = false; startIdleTimer(); 
 
-    // OPTYMALIZACJA - Użycie natywnego detektora kodu w systemie (ML)
+    // Opcja szybkiego skanera z ML (Machine Learning)
     const config = {
         fps: 15, 
-        qrbox: { width: 260, height: 120 }, // Odrobinę szersze dla zaokrąglonych
+        qrbox: { width: 260, height: 120 },
         formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_8 ],
         disableFlip: false,
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true } // 🔥 TO PRZYSPIESZA ODCZYT NA ZAGIĘCIACH
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true } 
     };
 
     try {
@@ -264,7 +286,7 @@ async function startScannerView() {
                     html5QrCode.stop().then(() => {
                         if(targetItem.pozostalo > 1) { 
                             openNumpadModal();
-                        } else { sendVal(1, "scan"); } // Zapis trybu jako SCAN
+                        } else { sendVal(1, "scan"); } 
                     }).catch(e => console.error(e));
                 }
             } else { 
@@ -275,11 +297,19 @@ async function startScannerView() {
     } catch(e) { showError("Błąd kamery. Odśwież stronę."); }
 }
 
-document.getElementById("btn-scan-item").onclick = () => startScannerView();
+document.getElementById("btn-scan-item").onclick = () => {
+    // Dodatkowe zabezpieczenie przed wejściem z pustym EAN
+    const isEanMissing = targetItem && (!targetItem.ean || targetItem.ean.trim() === "" || targetItem.ean.trim() === "---");
+    if (isEanMissing) return; 
+    startScannerView();
+};
 
 // --- TRYB RĘCZNY (MANUAL) ---
 document.getElementById('btn-manual-add').onclick = () => {
-    if (!isManualUnlocked) return;
+    const isEanMissing = targetItem && (!targetItem.ean || targetItem.ean.trim() === "" || targetItem.ean.trim() === "---");
+    // Otwórz, jeśli odblokowane LUB nie ma EAN
+    if (!isManualUnlocked && !isEanMissing) return; 
+    
     speakVoice("Wprowadzanie ręczne");
     openNumpadModal();
 };
@@ -299,7 +329,9 @@ function openNumpadModal() {
 // --- WYSYŁKA ---
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
-    if(isManualUnlocked && document.getElementById('scanner-box').style.display === 'none') {
+    const isEanMissing = targetItem && (!targetItem.ean || targetItem.ean.trim() === "" || targetItem.ean.trim() === "---");
+    // Jeśli to ręczne wywołanie LUB brak kodu, cofamy do karty. W przeciwnym razie cofamy do skanera
+    if(document.getElementById('scanner-box').style.display === 'none' || isEanMissing) {
         // Został kliknięty z panelu
     } else {
         startScannerView(); 
@@ -346,7 +378,7 @@ document.getElementById("btn-qty-ok").onclick = () => {
     sendVal(val, mode); 
 };
 
-// ... (Standardowa obsługa Numpada)
+// ... Numpad
 function updateDisplay(val) { currentInputValue = String(val); document.getElementById("qty-input-display").innerText = currentInputValue; }
 document.querySelectorAll('.np-btn[data-val]').forEach(b => { b.onclick = () => { let newVal = currentInputValue === "0" ? b.dataset.val : currentInputValue + b.dataset.val; if(parseInt(newVal) > targetItem.pozostalo) flashDisplayError(); else updateDisplay(newVal); }; });
 document.getElementById("np-clear").onclick = () => updateDisplay("0");
