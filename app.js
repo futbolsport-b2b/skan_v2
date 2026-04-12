@@ -101,7 +101,7 @@ function startIdleTimer() {
     scanIdleTimer = setTimeout(() => {
         speakVoice("Skanuj produkt");
         startIdleTimer(); 
-    }, 5000);
+    }, 10000); // Zmieniono na 10 sekund zgodnie z zaleceniem
 }
 
 function stopIdleTimer() {
@@ -304,7 +304,7 @@ document.getElementById('btn-torch').onclick = async () => {
     } catch(e) { torchOn = false; alert("Latarka niedostępna"); }
 };
 
-// --- BEZPIECZNA OPTYMALIZACJA SKANERA (PROGRAMOWA, NIE SPRZĘTOWA) ---
+// Czysty i bezpieczny skaner
 async function startScannerView() {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
@@ -314,7 +314,7 @@ async function startScannerView() {
 
     startIdleTimer(); 
 
-    // Optymalizacja oprogramowania
+    // Ograniczenie do formatów magazynowych
     const formats = [
         Html5QrcodeSupportedFormats.EAN_13,
         Html5QrcodeSupportedFormats.CODE_39,
@@ -322,9 +322,10 @@ async function startScannerView() {
         Html5QrcodeSupportedFormats.EAN_8
     ];
 
+    // Bezpieczny config z maską cięcia (qrbox) pasującą do rozmiaru scanner-visual
     const config = {
-        fps: 15, // Złoty środek dla płynności i analizy klatek
-        qrbox: { width: 300, height: 120 }, // Wymuszona strefa cięcia na środku ekranu
+        fps: 15, 
+        qrbox: { width: 280, height: 120 }, 
         formatsToSupport: formats,
         disableFlip: false 
     };
@@ -334,7 +335,6 @@ async function startScannerView() {
             await html5QrCode.stop();
         }
         
-        // Zwykłe wywołanie kamery tylnej bez agresywnego wymuszania HD i focusu
         await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
             
             stopIdleTimer(); 
@@ -363,7 +363,6 @@ async function startScannerView() {
             }
         });
     } catch(e) { 
-        // Logowanie dokładnego błędu w przypadku problemów ze starszym telefonem
         console.warn(e);
         showError("Błąd inicjalizacji kamery"); 
     }
@@ -409,6 +408,14 @@ function showView(id) {
     ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => {
         document.getElementById(v).style.display = (v === id) ? 'block' : 'none';
     });
+    
+    // Kluczowa zmiana: ukrywanie napisu systemowego dla odzyskania miejsca
+    const brandTitle = document.getElementById('brand-title');
+    if (id === 'task-panel' || id === 'scanner-box') {
+        brandTitle.style.display = 'none';
+    } else {
+        brandTitle.style.display = 'block';
+    }
 }
 
 function showError(m) {
