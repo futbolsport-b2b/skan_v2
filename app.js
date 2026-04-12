@@ -232,9 +232,7 @@ function setLoadingState(active) {
 }
 
 async function fetchNext(offset) {
-    stopIdleTimer(); 
-    showView('task-panel'); 
-    setLoadingState(true); 
+    stopIdleTimer(); showView('task-panel'); setLoadingState(true); 
     try {
         const res = await fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&action=get_next&offset=${offset}`);
         const data = await res.json();
@@ -291,9 +289,9 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-// --- SKANER Z ZABEZPIECZENIEM COLD-START ---
+// --- SKANER Z ŻELAZNĄ BLOKADĄ W TRAKCIE BŁĘDU ---
 function triggerScanVisual(type) {
-    const sv = document.getElementById("scanner-box"); 
+    const sv = document.getElementById("scanner-box");
     if(sv) {
         sv.classList.remove('scan-success', 'scan-error'); void sv.offsetWidth; 
         sv.classList.add(type === 'success' ? 'scan-success' : 'scan-error');
@@ -323,26 +321,29 @@ async function startScannerView() {
     if(sv) {
         sv.style.width = boxWidth + "px";
         sv.style.height = boxHeight + "px";
-        sv.classList.remove('scanner-ready'); // Ukrywamy celownik na starcie
+        sv.classList.remove('scanner-ready'); 
     }
 
     const config = {
         fps: 15, 
         qrbox: { width: boxWidth, height: boxHeight },
         formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_8 ],
-        disableFlip: false,
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true } 
+        disableFlip: false
     };
 
     try {
-        if (html5QrCode.isScanning) await html5QrCode.stop();
+        if (html5QrCode.isScanning) {
+            await html5QrCode.stop();
+            html5QrCode.clear(); 
+        }
         
         let scanMatched = false; 
         let errorCooldown = false; 
-        let isCameraWarm = false; // Programowe odrzucanie skanów w trakcie wyostrzania
+        let isCameraWarm = false; 
 
         await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-            if (scanMatched || !isCameraWarm) return; // Odrzucamy jeśli aparat się rozgrzewa!
+            // ŻELAZNA BLOKADA: Ignoruje kody, gdy aparat jest zimny, kod pasuje, lub widoczny jest komunikat błędu
+            if (scanMatched || !isCameraWarm || errorCooldown) return; 
 
             if(text.trim() === String(targetItem.ean)) {
                 scanMatched = true;
@@ -357,38 +358,36 @@ async function startScannerView() {
                             if(targetItem.pozostalo > 1) { 
                                 openNumpadModal();
                             } else { sendVal(1, "scan"); } 
-                        }).catch(e => console.error(e));
+                        }).catch(e => console.error("Kamera stop error", e));
                     }
                 }, 600); 
                 
             } else { 
-                if (!errorCooldown) {
-                    errorCooldown = true;
-                    stopIdleTimer(); 
-                    
-                    playSound('error');
-                    triggerScanVisual('error');
-                    showError("BŁĘDNY PRODUKT!", true); 
-                    
-                    setTimeout(() => {
-                        errorCooldown = false;
-                        if (document.getElementById('scanner-box').style.display === 'block') {
-                            startIdleTimer('scan');
-                        }
-                    }, 2500); 
-                }
+                errorCooldown = true; // Załączamy blokadę!
+                stopIdleTimer(); 
+                
+                playSound('error');
+                triggerScanVisual('error');
+                showError("BŁĘDNY PRODUKT!", true); // true = bez głosu
+                
+                // Odblokowanie po dokładnie 2 sekundach (zgodnie z długością czerwonej planszy)
+                setTimeout(() => {
+                    errorCooldown = false;
+                    if (document.getElementById('scanner-box').style.display === 'block') {
+                        startIdleTimer('scan');
+                    }
+                }, 2000); 
             }
         });
 
         // WYZWOLENIE OSTRZENIA (COLD-START FIX)
-        // Usypiamy naszą czujność na 800ms, a po tym czasie pokazujemy wizualizator.
         try {
             if (html5QrCode.getState() === 2) { 
                 html5QrCode.pause(true); 
                 setTimeout(() => {
                     html5QrCode.resume();
                     isCameraWarm = true;
-                    if(sv) sv.classList.add('scanner-ready'); // Pokazujemy celownik
+                    if(sv) sv.classList.add('scanner-ready'); 
                     startIdleTimer('scan');
                 }, 800);
             } else {
@@ -526,7 +525,8 @@ function showError(m, muteVoice = false) {
     const o = document.getElementById("error-overlay");
     o.style.display = "flex";
     document.getElementById("error-text").innerText = m;
-    setTimeout(() => { o.style.display = "none"; }, 2500);
+    // ZMiana na 2000ms zgodnie ze wstrzymaniem skanera
+    setTimeout(() => { o.style.display = "none"; }, 2000);
 }
 
 document.getElementById("btn-logout").onclick = () => {
