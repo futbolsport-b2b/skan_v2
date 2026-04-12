@@ -10,6 +10,10 @@ let isFirstScanPerOrder = true;
 let globalOrders = []; 
 let activeDashboardTab = 'todo'; 
 
+// --- NOWOŚĆ v8.7: Zmienne dla Wyszukiwarki Modalnej ---
+let activeSearchQuery = "";
+let tempSearchQuery = "";
+
 const html5QrCode = new Html5Qrcode("reader");
 
 let audioCtx = null;
@@ -25,6 +29,14 @@ function getCurrentViewId() {
 }
 
 window.addEventListener('popstate', (event) => {
+    // Zablokuj cofanie jeśli otwarty jest modal wyszukiwarki
+    if (document.getElementById('search-modal').style.display === 'flex') {
+        document.getElementById('search-modal').style.display = 'none';
+        const currentView = getCurrentViewId();
+        history.pushState({ view: currentView }, "", "#" + currentView);
+        return;
+    }
+
     if (document.getElementById('qty-modal').style.display === 'flex') {
         document.getElementById('qty-modal').style.display = 'none';
         stopIdleTimer(); 
@@ -233,7 +245,6 @@ document.getElementById('btn-manual-lock').onclick = function() {
     isManualUnlocked = !isManualUnlocked;
     sessionStorage.setItem('manualUnlock', isManualUnlocked);
     updateLockUI();
-    // v8.6 FIX: Nowy komunikat głosowy
     if (isManualUnlocked) speakVoice("Tryb ręcznego wprowadzania Aktywny");
 };
 
@@ -250,23 +261,29 @@ function getInitials(name) {
     return name.substring(0, 2).toUpperCase();
 }
 
+// v8.7: NOWA, LEPSZA PALETA
 const DISTINCT_COLORS = [
-    { hue: 215, saturation: 90, lightness: 55 },
-    { hue: 20,  saturation: 90, lightness: 55 },
-    { hue: 140, saturation: 70, lightness: 45 },
-    { hue: 280, saturation: 70, lightness: 60 },
-    { hue: 350, saturation: 85, lightness: 55 },
-    { hue: 180, saturation: 90, lightness: 35 },
-    { hue: 45,  saturation: 95, lightness: 45 },
-    { hue: 320, saturation: 85, lightness: 60 },
-    { hue: 200, saturation: 90, lightness: 45 },
-    { hue: 80,  saturation: 85, lightness: 40 },
-    { hue: 10,  saturation: 80, lightness: 45 },
-    { hue: 250, saturation: 70, lightness: 65 } 
+    { hue: 210, saturation: 90, lightness: 60 }, // Niebieski
+    { hue: 350, saturation: 85, lightness: 60 }, // Karmazynowy
+    { hue: 130, saturation: 75, lightness: 50 }, // Zielony
+    { hue: 280, saturation: 80, lightness: 65 }, // Fioletowy
+    { hue: 30,  saturation: 90, lightness: 55 }, // Pomarańczowy
+    { hue: 180, saturation: 85, lightness: 45 }, // Morski
+    { hue: 320, saturation: 80, lightness: 65 }, // Różowy
+    { hue: 80,  saturation: 80, lightness: 45 }, // Limonkowy
+    { hue: 250, saturation: 85, lightness: 65 }, // Indigo
+    { hue: 0,   saturation: 0,  lightness: 55 }  // Szary
 ];
 
 function getColorComponents(name) {
     if (!name) return DISTINCT_COLORS[0];
+    const cleanName = name.trim().toUpperCase();
+    
+    // v8.7 FIX: Twarda reguła dla konkretnego operatora (Złoty Kolor)
+    if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
+        return { hue: 45, saturation: 100, lightness: 50 }; 
+    }
+    
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -295,11 +312,12 @@ function renderUsers(users) {
     const list = document.getElementById("user-list");
     list.innerHTML = "";
     
-    users.forEach((u, index) => {
+    users.forEach((u) => {
         const btn = document.createElement("button");
         btn.className = "btn-user";
         
         const initials = getInitials(u.name);
+        
         const colorComp = getColorComponents(u.name);
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
@@ -319,7 +337,7 @@ function renderUsers(users) {
             <div class="user-tile-bottom">
                 <div class="user-completed-row">
                     <div class="user-box-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24">
+                        <svg width="26" height="26" viewBox="0 0 24 24">
                           <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
                           <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
                           <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
@@ -351,28 +369,28 @@ function renderUsers(users) {
 function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     
-    const initials = getInitials(user);
+    // v8.7 FIX: Kolorowe imię, brak kółka.
     const colorComp = getColorComponents(user);
     const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
     
-    const avatar = document.getElementById("dashboard-user-avatar");
-    avatar.style.backgroundColor = baseColor;
-    avatar.innerText = initials;
-    
-    document.getElementById("display-user-name").innerText = user;
+    const nameDisplay = document.getElementById("display-user-name");
+    nameDisplay.innerText = user;
+    nameDisplay.style.color = baseColor;
     
     activeDashboardTab = 'todo';
-    document.getElementById('input-search-orders').value = '';
-    document.getElementById('search-numpad').classList.remove('active'); // Reset numpada
-    switchTab('todo'); 
+    activeSearchQuery = ""; // Reset filtra
+    document.getElementById('btn-toggle-search').classList.remove('active-filter');
     
+    switchTab('todo'); 
     showView('view-orders-dashboard'); 
     loadOrders();
 
-    Html5Qrcode.getCameras().then(devices => {
-        if (devices && devices.length) console.log("Kamera autoryzowana w tle");
-    }).catch(err => {});
+    Html5Qrcode.getCameras().then(devices => {}).catch(err => {});
 }
+
+// =========================================================
+// WYSZUKIWARKA & CUSTOM NUMPAD MODAL (v8.7 FIX)
+// =========================================================
 
 function switchTab(tab) {
     activeDashboardTab = tab;
@@ -381,46 +399,61 @@ function switchTab(tab) {
     renderOrdersFromGlobal();
 }
 
-// =========================================================
-// WYSZUKIWARKA & CUSTOM NUMPAD (v8.6)
-// =========================================================
-const searchInput = document.getElementById('input-search-orders');
-const searchNumpad = document.getElementById('search-numpad');
+function updateSearchDisplay() {
+    const disp = document.getElementById('search-input-display');
+    if(tempSearchQuery === "") {
+        disp.innerText = "Wpisz kod...";
+        disp.style.color = "rgba(255,255,255,0.4)";
+    } else {
+        disp.innerText = tempSearchQuery;
+        disp.style.color = "#fff";
+    }
+}
 
-// Pokaż numpad po kliknięciu w lupę/pole
-searchInput.addEventListener('click', (e) => {
+// Przycisk Lupy pomiędzy zakładkami
+document.getElementById('btn-toggle-search').onclick = (e) => {
     e.stopPropagation();
-    searchNumpad.classList.add('active');
-});
+    if (activeSearchQuery !== "") {
+        // Jeśli jest filtr (czerwona lupa), kliknięcie go czyści
+        activeSearchQuery = "";
+        document.getElementById('btn-toggle-search').classList.remove('active-filter');
+        renderOrdersFromGlobal();
+    } else {
+        // Otwórz modal z numpadem z dołu
+        tempSearchQuery = "";
+        updateSearchDisplay();
+        document.getElementById('search-modal').style.display = 'flex';
+    }
+};
 
-// Obsługa przycisków numerycznych klawiatury wyszukiwarki
+// Klawisze w wyszukiwarce numerycznej
 document.querySelectorAll('.np-btn-search[data-val]').forEach(btn => {
     btn.onclick = (e) => {
         e.stopPropagation();
-        searchInput.value += btn.getAttribute('data-val');
-        renderOrdersFromGlobal();
+        tempSearchQuery += btn.getAttribute('data-val');
+        updateSearchDisplay();
     };
 });
 
-// Cofnij (Backspace)
 document.getElementById('np-search-del').onclick = (e) => {
     e.stopPropagation();
-    searchInput.value = searchInput.value.slice(0, -1);
-    renderOrdersFromGlobal();
+    tempSearchQuery = tempSearchQuery.slice(0, -1);
+    updateSearchDisplay();
 };
 
-// Wyczyść wszystko (C)
-document.getElementById('np-search-clear').onclick = (e) => {
-    e.stopPropagation();
-    searchInput.value = '';
-    renderOrdersFromGlobal();
+document.getElementById('btn-search-cancel').onclick = () => {
+    document.getElementById('search-modal').style.display = 'none';
 };
 
-// Ukryj numpad po kliknięciu na listę zamówień (poza numpadem i inputem)
-document.getElementById('orders-list-container').addEventListener('click', () => {
-    searchNumpad.classList.remove('active');
-});
-
+// Zatwierdzenie wyszukiwania
+document.getElementById('btn-search-ok').onclick = () => {
+    if(tempSearchQuery.trim() !== "") {
+        activeSearchQuery = tempSearchQuery.trim();
+        document.getElementById('btn-toggle-search').classList.add('active-filter'); // Zapal czerwoną lupę
+    }
+    document.getElementById('search-modal').style.display = 'none';
+    renderOrdersFromGlobal();
+};
 
 async function loadOrders() {
     const container = document.getElementById("orders-list-container");
@@ -445,7 +478,8 @@ function renderOrdersFromGlobal() {
     const container = document.getElementById("orders-list-container");
     container.innerHTML = "";
 
-    const searchQuery = document.getElementById('input-search-orders').value.toLowerCase().trim();
+    // Używamy zmiennej z potwierdzonego wyszukiwania
+    const searchQuery = activeSearchQuery.toLowerCase();
 
     let filtered = globalOrders.filter(o => {
         if (activeDashboardTab === 'todo') return o.status !== 'U';
@@ -468,7 +502,7 @@ function renderOrdersFromGlobal() {
     }
 
     if (filtered.length === 0) {
-        container.innerHTML = "<div class='view-label' style='text-transform:none; margin-top: 50px;'>Brak wyników.</div>";
+        container.innerHTML = "<div class='view-label' style='text-transform:none; margin-top: 50px; text-align:center;'>Brak wyników.</div>";
         return;
     }
 
@@ -722,7 +756,6 @@ document.getElementById("btn-scan-item").onclick = () => {
 document.getElementById('btn-manual-add').onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     if (!isManualUnlocked && hasEan) return; 
-    
     speakVoice("Wprowadzanie ręczne");
     openNumpadModal();
 };
