@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v4.22</title>
-    <link rel="stylesheet" href="style.css?v=4.22">
+    <title>B2B TERMINAL v5.0</title>
+    <link rel="stylesheet" href="style.css?v=5.0">
     <meta name="theme-color" content="#000000">
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
@@ -16,8 +16,16 @@
     </div>
     
     <div class="app-container">
+        
+        <div id="system-status-bar">
+            <div id="clock-display">00:00</div>
+            <div id="network-status" class="status-indicator net-online">
+                <div class="status-dot"></div> ONLINE
+            </div>
+        </div>
+
         <header id="main-header">
-            <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI B2B VER. 4.22</div>
+            <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI B2B VER. 5.0</div>
             
             <div class="header-main-row" id="header-main-row" style="display: none;">
                 <div id="order-val"></div>
@@ -137,6 +145,6 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=4.22"></script>
+    <script src="app.js?v=5.0"></script>
 </body>
 </html>
