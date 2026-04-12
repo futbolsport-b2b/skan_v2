@@ -304,7 +304,7 @@ document.getElementById('btn-torch').onclick = async () => {
     } catch(e) { torchOn = false; alert("Latarka niedostępna"); }
 };
 
-// --- ZMODYFIKOWANA OPCJA SKANERA (TYLKO OPTYMALIZACJA) ---
+// --- BEZPIECZNA OPTYMALIZACJA SKANERA (PROGRAMOWA, NIE SPRZĘTOWA) ---
 async function startScannerView() {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
@@ -314,7 +314,7 @@ async function startScannerView() {
 
     startIdleTimer(); 
 
-    // Optymalizacja skanera
+    // Optymalizacja oprogramowania
     const formats = [
         Html5QrcodeSupportedFormats.EAN_13,
         Html5QrcodeSupportedFormats.CODE_39,
@@ -323,25 +323,19 @@ async function startScannerView() {
     ];
 
     const config = {
-        fps: 15, 
-        qrbox: { width: 300, height: 120 }, 
+        fps: 15, // Złoty środek dla płynności i analizy klatek
+        qrbox: { width: 300, height: 120 }, // Wymuszona strefa cięcia na środku ekranu
         formatsToSupport: formats,
-        aspectRatio: 1.777778, 
         disableFlip: false 
-    };
-
-    const cameraConstraints = {
-        facingMode: "environment",
-        width: { ideal: 1280, min: 640 }, 
-        height: { ideal: 720, min: 480 },
-        advanced: [{ focusMode: "continuous" }] 
     };
 
     try {
         if (html5QrCode.isScanning) {
             await html5QrCode.stop();
         }
-        await html5QrCode.start(cameraConstraints, config, (text) => {
+        
+        // Zwykłe wywołanie kamery tylnej bez agresywnego wymuszania HD i focusu
+        await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
             
             stopIdleTimer(); 
             
@@ -368,7 +362,11 @@ async function startScannerView() {
                 setTimeout(() => startIdleTimer(), 2500);
             }
         });
-    } catch(e) { showError("Błąd kamery lub brak wsparcia HD"); }
+    } catch(e) { 
+        // Logowanie dokładnego błędu w przypadku problemów ze starszym telefonem
+        console.warn(e);
+        showError("Błąd inicjalizacji kamery"); 
+    }
 }
 
 document.getElementById("btn-scan-item").onclick = () => startScannerView();
