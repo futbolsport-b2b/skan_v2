@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v4.19</title>
-    <link rel="stylesheet" href="style.css?v=4.19">
+    <title>B2B TERMINAL v4.21</title>
+    <link rel="stylesheet" href="style.css?v=4.21">
     <meta name="theme-color" content="#000000">
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
@@ -17,7 +17,7 @@
     
     <div class="app-container">
         <header id="main-header">
-            <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI B2B VER. 4.19</div>
+            <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI B2B VER. 4.21</div>
             
             <div class="header-main-row" id="header-main-row" style="display: none;">
                 <div id="order-val"></div>
@@ -66,6 +66,11 @@
                 </div>
                 
                 <div id="reader"></div>
+
+                <div id="scanner-loader" style="display:none;">
+                    <div class="modern-spinner"></div>
+                    <div class="loader-calib-text">KALIBRACJA OPTYKI...</div>
+                </div>
                 
                 <div id="scanner-visual">
                     <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
@@ -133,6 +138,6 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=4.19"></script>
+    <script src="app.js?v=4.21"></script>
 </body>
 </html>
