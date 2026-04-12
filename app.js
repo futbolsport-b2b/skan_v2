@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzuPG3EedNJ6R-e63x5cAyjxplTVZi3ArrE8SPBzLzaVzagH4f8d9FeXcN2Efw12TrA/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzY3FlEKqnF7xDcHS4wbpUrXXQZVcG3BdoHDTXfqUA0D-3uYod3I77-4jSiMYQiA0t8/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -12,6 +12,7 @@ const html5QrCode = new Html5Qrcode("reader");
 let audioCtx = null;
 let wakeLock = null;
 
+// --- ZAAWANSOWANE ZARZĄDZANIE TIMEREM BEZCZYNNOŚCI ---
 let idleTimer = null;
 let currentIdleContext = null; 
 
@@ -37,6 +38,27 @@ function stopIdleTimer() {
     }
 }
 
+// --- STATUS SYSTEMU (Zegarek i Sieć) ---
+setInterval(() => {
+    const now = new Date();
+    document.getElementById('clock-display').innerText = now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+}, 1000);
+
+function updateNetworkStatus() {
+    const netElem = document.getElementById('network-status');
+    if (navigator.onLine) {
+        netElem.className = 'status-indicator net-online';
+        netElem.innerHTML = '<div class="status-dot"></div> ONLINE';
+    } else {
+        netElem.className = 'status-indicator net-offline';
+        netElem.innerHTML = '<div class="status-dot"></div> OFFLINE';
+        showError("Brak połączenia z internetem!", true);
+    }
+}
+window.addEventListener('online', updateNetworkStatus);
+window.addEventListener('offline', updateNetworkStatus);
+
+// --- WAKELOCK ---
 async function requestWakeLock() {
     try {
         if ('wakeLock' in navigator) {
@@ -49,6 +71,7 @@ document.addEventListener('visibilitychange', () => {
     if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
 
+// --- AUDIO & TTS ---
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -105,6 +128,7 @@ function playSound(type) {
     }
 }
 
+// --- WERYFIKACJA EAN I KŁÓDKA ---
 function isEanValid(ean) {
     if (ean === null || ean === undefined) return false;
     const str = String(ean).trim().toUpperCase();
@@ -150,10 +174,29 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
 };
 
+// --- START APP & GENERATOR AWATARÓW ---
 window.onload = () => {
+    updateNetworkStatus();
     updateLockUI();
     initApp();
 };
+
+function getInitials(name) {
+    if (!name) return "??";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+}
+
+function getColor(name) {
+    if (!name) return "#555";
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash % 360);
+    return `hsl(${hue}, 65%, 45%)`; // Przyjemne, nasycone, stałe dla imienia
+}
 
 async function initApp() {
     stopIdleTimer();
@@ -172,13 +215,26 @@ async function initApp() {
 function renderUsers(users) {
     const list = document.getElementById("user-list");
     list.innerHTML = "";
+    
+    // Teraz `users` to tablica obiektów: [{name: "Osoba", completed: 5}, ...]
     users.forEach(u => {
         const btn = document.createElement("button");
         btn.className = "btn-user";
-        btn.innerHTML = `<div class="user-avatar-icon">👤</div><span>${u}</span>`;
+        
+        const initials = getInitials(u.name);
+        const color = getColor(u.name);
+
+        btn.innerHTML = `
+            <div class="user-avatar-icon" style="background-color: ${color}; color: #fff;">
+                ${initials}
+            </div>
+            <span>${u.name}</span>
+            <div class="user-badge-completed">Ukończono: <b>${u.completed}</b></div>
+        `;
+        
         btn.onclick = () => {
             requestWakeLock(); 
-            selectUser(u);
+            selectUser(u.name);
         };
         list.appendChild(btn);
     });
@@ -189,11 +245,10 @@ function selectUser(user) {
     document.getElementById("display-user-name").innerText = user;
     showView('view-orders-dashboard'); loadOrders();
 
-    // WYZWOLENIE ZGODY NA APARAT PRZY LOGOWANIU (WARM-UP)
     Html5Qrcode.getCameras().then(devices => {
-        if (devices && devices.length) console.log("Kamera autoryzowana");
+        if (devices && devices.length) console.log("Kamera autoryzowana w tle");
     }).catch(err => {
-        console.warn("Brak uprawnień kamery", err);
+        console.warn("Brak uprawnień kamery na starcie", err);
     });
 }
 
@@ -223,7 +278,7 @@ async function loadOrders() {
 
 function startOrder(id, itemsCount) {
     currentOrderID = id;
-    isFirstScanPerOrder = true; // Zresetowanie kalibracji dla nowego zamówienia
+    isFirstScanPerOrder = true; 
 
     document.getElementById("header-main-row").style.display = "flex";
     document.getElementById("order-val").innerText = id;
@@ -296,6 +351,7 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
+// --- SKANER ---
 function triggerScanVisual(type) {
     const sv = document.getElementById("scanner-box");
     if(sv) {
@@ -343,67 +399,61 @@ async function startScannerView() {
             html5QrCode.clear(); 
         }
 
-        // ==========================================
-        // KALIBRACJA APARATU (ROZWIĄZANIE ŚLEPEGO DEKODERA)
-        // ==========================================
         if (isFirstScanPerOrder) {
             document.getElementById('scanner-loader').style.display = 'flex';
-            
             try {
                 await html5QrCode.start({ facingMode: "environment" }, config, () => {});
                 await new Promise(r => setTimeout(r, 1200)); 
                 await html5QrCode.stop(); 
-            } catch (err) {
-                console.warn("Kalibracja pominięta:", err);
-            }
-            
+            } catch (err) {}
             isFirstScanPerOrder = false;
             document.getElementById('scanner-loader').style.display = 'none';
         }
 
-        // WŁAŚCIWY START SKANERA
-        if(sv) sv.classList.add('scanner-ready');
-        startIdleTimer('scan');
+        setTimeout(async () => {
+            if(sv) sv.classList.add('scanner-ready');
+            startIdleTimer('scan');
 
-        let scanMatched = false; 
-        let errorCooldown = false; 
+            let scanMatched = false; 
+            let errorCooldown = false; 
 
-        await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-            if (scanMatched || errorCooldown) return; 
+            await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+                if (scanMatched || errorCooldown) return; 
 
-            if(text.trim() === String(targetItem.ean)) {
-                scanMatched = true;
-                stopIdleTimer(); 
-                
-                triggerScanVisual('success'); 
-                playSound('success');
-                
-                setTimeout(() => {
-                    if (html5QrCode.isScanning) {
-                        html5QrCode.stop().then(() => {
-                            if(targetItem.pozostalo > 1) { 
-                                openNumpadModal();
-                            } else { sendVal(1, "scan"); } 
-                        }).catch(e => console.error("Kamera stop error", e));
-                    }
-                }, 600); 
-                
-            } else { 
-                errorCooldown = true; 
-                stopIdleTimer(); 
-                
-                playSound('error');
-                triggerScanVisual('error');
-                showError("BŁĘDNY PRODUKT!", true); 
-                
-                setTimeout(() => {
-                    errorCooldown = false;
-                    if (document.getElementById('scanner-box').style.display === 'block') {
-                        startIdleTimer('scan');
-                    }
-                }, 2000); 
-            }
-        });
+                if(text.trim() === String(targetItem.ean)) {
+                    scanMatched = true;
+                    stopIdleTimer(); 
+                    
+                    triggerScanVisual('success'); 
+                    playSound('success');
+                    
+                    setTimeout(() => {
+                        if (html5QrCode.isScanning) {
+                            html5QrCode.stop().then(() => {
+                                if(targetItem.pozostalo > 1) { 
+                                    openNumpadModal();
+                                } else { sendVal(1, "scan"); } 
+                            }).catch(e => console.error("Kamera stop error", e));
+                        }
+                    }, 600); 
+                    
+                } else { 
+                    errorCooldown = true; 
+                    stopIdleTimer(); 
+                    
+                    playSound('error');
+                    triggerScanVisual('error');
+                    showError("BŁĘDNY PRODUKT!", true); 
+                    
+                    setTimeout(() => {
+                        errorCooldown = false;
+                        if (document.getElementById('scanner-box').style.display === 'block') {
+                            startIdleTimer('scan');
+                        }
+                    }, 2000); 
+                }
+            });
+        }, 100);
 
     } catch(e) { 
         document.getElementById('scanner-loader').style.display = 'none';
@@ -439,7 +489,7 @@ function openNumpadModal() {
     startIdleTimer('numpad');
 }
 
-// --- WYSYŁKA DANYCH ---
+// --- WYSYŁKA ---
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
@@ -447,7 +497,7 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
     if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // powrót
+        // null
     } else {
         startScannerView(); 
     }
