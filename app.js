@@ -163,7 +163,7 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
 };
 
-// --- START APP & GENERATOR AWATARÓW (v7.1 UX Visual Perfect) ---
+// --- START APP & GENERATOR AWATARÓW (v7.2 UX) ---
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
@@ -184,7 +184,7 @@ function getColorComponents(name) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = Math.abs(hash % 360);
-    return { hue: hue, saturation: 75, lightness: 55 }; // Jaskrawy pastelowy
+    return { hue: hue, saturation: 75, lightness: 55 };
 }
 
 async function initApp() {
@@ -213,30 +213,46 @@ function renderUsers(users) {
         const colorComp = getColorComponents(u.name);
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         
-        // Fix v7.1: Wypełnienie paska ma być minimalnie jaśniejszym tonem tła
-        const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness + 15}%)`;
+        // v7.2 - Wypełnienie ma lekko ciemniejszy/bardziej nasycony ton, aby był widoczny na białym tle, 
+        // ale stanowił jedną spójną gamę z kafelkiem.
+        const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 12)}%)`;
         
+        // Logika wędrującego procentu
+        // Jeśli wartość 0%, tekst ląduje po prawej stronie wypełnienia (czyli na białym tle) i musi być w kolorze kafelka, by był widoczny.
+        // Gdy pasek przekroczy np. 15%, tekst wpada do środka, więc zmieniamy kolor na biały.
+        const isLow = u.progress < 15;
+        const textColor = isLow ? baseColor : "#ffffff";
+        const textLeft = isLow ? `calc(${u.progress}% + 6px)` : `calc(${u.progress}% - 6px)`;
+        const textTransform = isLow ? `translate(0, -50%)` : `translate(-100%, -50%)`;
+
         btn.style.backgroundColor = baseColor; 
 
-        // Ikona Paczki SVG (Minimalistyczna, Biała, Cienkie Linie wg v7.1)
         btn.innerHTML = `
-            <div class="user-tile-initials">${initials}</div>
-            <div class="user-completed-block">
-                <div class="user-box-icon">
-                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
-                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                    </svg>
-                </div>
-                <div class="user-completed-qty">${u.completed}</div>
-                <div class="user-completed-label">ZAMÓWIEŃ DZIŚ</div>
+            <div class="user-tile-top">
+                <div class="user-tile-initials">${initials}</div>
             </div>
-            <div class="user-tile-progress-container">
-                <div class="user-tile-progress-track">
-                    <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillColor};"></div>
-                    <div class="user-tile-progress-text">${u.progress}%</div>
+            
+            <div class="user-tile-bottom">
+                <div class="user-completed-row">
+                    <div class="user-box-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24">
+                          <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
+                          <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
+                          <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
+                          <circle cx="18" cy="18" r="6" fill="#ffffff" />
+                          <path d="M15.5 18l1.5 1.5 3-3" stroke="${baseColor}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                    <div class="user-completed-qty">${u.completed}</div>
                 </div>
+
+                <div class="user-tile-progress-container">
+                    <div class="user-tile-progress-track">
+                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillColor};"></div>
+                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor};">${u.progress}%</div>
+                    </div>
+                </div>
+                <div class="user-completed-label">ZREALIZOWANO DZIŚ</div>
             </div>
         `;
         
@@ -505,7 +521,7 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
     if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // powrót do karty
+        // powrót
     } else {
         startScannerView(); 
     }
