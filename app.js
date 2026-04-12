@@ -15,6 +15,86 @@ let wakeLock = null;
 let idleTimer = null;
 let currentIdleContext = null; 
 
+// ==========================================
+// NOWOŚĆ v7.7: HISTORY API (ZARZĄDZANIE STRZAŁKĄ WSTECZ)
+// ==========================================
+function getCurrentViewId() {
+    const views = ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'];
+    return views.find(v => document.getElementById(v).style.display === 'flex');
+}
+
+window.addEventListener('popstate', (event) => {
+    // 1. Jeśli otwarty jest Modal z klawiaturą, zamknij go i nie cofaj widoku
+    if (document.getElementById('qty-modal').style.display === 'flex') {
+        document.getElementById('qty-modal').style.display = 'none';
+        stopIdleTimer(); 
+        const hasEan = isEanValid(targetItem ? targetItem.ean : null);
+        if(document.getElementById('scanner-box').style.display !== 'none' && hasEan) {
+            startScannerView(); 
+        }
+        
+        // Zabezpieczamy historię - nadpisujemy stan, żeby użytkownik fizycznie "nie cofnął się" ze strony
+        const currentView = getCurrentViewId();
+        history.pushState({ view: currentView }, "", "#" + currentView);
+        return;
+    }
+    
+    // 2. Jeśli otwarte jest zdjęcie produktu (Zoom), zamknij je i nie cofaj widoku
+    if (document.getElementById('image-zoom-overlay').style.display === 'flex') {
+        closeZoom();
+        const currentView = getCurrentViewId();
+        history.pushState({ view: currentView }, "", "#" + currentView);
+        return;
+    }
+
+    const state = event.state;
+    if (!state || !state.view) return;
+
+    const targetView = state.view;
+    const currentView = getCurrentViewId();
+
+    // Wyjście ze Skanera za pomocą strzałki w telefonie
+    if (currentView === 'scanner-box' && targetView === 'task-panel') {
+        stopIdleTimer(); 
+        if (html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => showView('task-panel', false)).catch(() => showView('task-panel', false));
+        } else {
+            showView('task-panel', false);
+        }
+        return;
+    }
+
+    // Wyjście z Zamówienia za pomocą strzałki w telefonie (Zabezpieczenie alertem!)
+    if (currentView === 'task-panel' && targetView === 'view-orders-dashboard') {
+        stopIdleTimer();
+        if(confirm("Opuścić zamówienie?")) {
+            document.getElementById("header-main-row").style.display = "none";
+            document.getElementById("global-progress-bar").style.display = "none";
+            loadOrders();
+            showView('view-orders-dashboard', false);
+        } else {
+            // Anulowano, odrzucamy cofnięcie i przywracamy hash karty
+            history.pushState({ view: 'task-panel' }, "", "#task-panel");
+        }
+        return;
+    }
+
+    // Wylogowanie z Dashboardu na stronę główną
+    if (currentView === 'view-orders-dashboard' && targetView === 'view-user-selection') {
+        sessionStorage.removeItem('manualUnlock'); isManualUnlocked = false; updateLockUI();
+        stopIdleTimer(); 
+        document.getElementById("header-main-row").style.display = "none"; 
+        document.getElementById("global-progress-bar").style.display = "none"; 
+        initApp(); // initApp sam ustawi history.replaceState
+        return;
+    }
+
+    // Standardowe przejście (fallback)
+    showView(targetView, false);
+});
+
+
+// --- TIMERY I STATUS SYSTEMU ---
 function startIdleTimer(context) {
     stopIdleTimer(); 
     currentIdleContext = context;
@@ -38,11 +118,11 @@ function stopIdleTimer() {
 }
 
 function updateNetworkStatus() {
-    const netElem = document.getElementById('network-status');
-    if (navigator.onLine) {
-        netElem.className = 'status-dot net-online';
-    } else {
-        netElem.className = 'status-dot net-offline';
+    const isOnline = navigator.onLine;
+    document.querySelectorAll('.network-status-indicator').forEach(el => {
+        el.className = 'network-status-indicator status-dot ' + (isOnline ? 'net-online' : 'net-offline');
+    });
+    if (!isOnline) {
         showError("Brak połączenia z internetem!", true);
     }
 }
@@ -61,6 +141,7 @@ document.addEventListener('visibilitychange', () => {
     if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
 
+// --- AUDIO & TTS ---
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -162,6 +243,8 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
 };
 
+
+// --- START APP & AWATARY ---
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
@@ -175,27 +258,29 @@ function getInitials(name) {
     return name.substring(0, 2).toUpperCase();
 }
 
-// v7.5 - Sztywna, ręcznie dobrana paleta 12 mocno kontrastujących kolorów.
-// Pozwala to na przypisanie ich iteracyjnie, gwarantując brak podobieństw na ekranie.
 const DISTINCT_COLORS = [
-    { hue: 215, saturation: 90, lightness: 55 }, // 0: Niebieski
-    { hue: 20,  saturation: 90, lightness: 55 }, // 1: Pomarańczowy
-    { hue: 140, saturation: 70, lightness: 45 }, // 2: Zielony
-    { hue: 280, saturation: 70, lightness: 60 }, // 3: Fioletowy
-    { hue: 350, saturation: 85, lightness: 55 }, // 4: Karmazynowy
-    { hue: 180, saturation: 90, lightness: 35 }, // 5: Morski
-    { hue: 45,  saturation: 95, lightness: 45 }, // 6: Złoty/Żółty
-    { hue: 320, saturation: 85, lightness: 60 }, // 7: Różowy
-    { hue: 200, saturation: 90, lightness: 45 }, // 8: Jasnoniebieski
-    { hue: 80,  saturation: 85, lightness: 40 }, // 9: Limonkowy
-    { hue: 10,  saturation: 80, lightness: 45 }, // 10: Rdzawy
-    { hue: 250, saturation: 70, lightness: 65 }  // 11: Indigo
+    { hue: 215, saturation: 90, lightness: 55 },
+    { hue: 20,  saturation: 90, lightness: 55 },
+    { hue: 140, saturation: 70, lightness: 45 },
+    { hue: 280, saturation: 70, lightness: 60 },
+    { hue: 350, saturation: 85, lightness: 55 },
+    { hue: 180, saturation: 90, lightness: 35 },
+    { hue: 45,  saturation: 95, lightness: 45 },
+    { hue: 320, saturation: 85, lightness: 60 },
+    { hue: 200, saturation: 90, lightness: 45 },
+    { hue: 80,  saturation: 85, lightness: 40 },
+    { hue: 10,  saturation: 80, lightness: 45 },
+    { hue: 250, saturation: 70, lightness: 65 } 
 ];
 
 async function initApp() {
     stopIdleTimer();
     document.getElementById("image-zoom-overlay").style.display = "none";
-    showView('view-user-selection');
+    
+    // Inicjalizacja historii dla pierwszego ekranu
+    showView('view-user-selection', false);
+    history.replaceState({ view: 'view-user-selection' }, "", "#view-user-selection");
+    
     document.getElementById("user-list").innerHTML = `<div class="loader-container"><div class="modern-spinner"></div><div class="loader-text-small">Autoryzacja...</div></div>`;
     
     try {
@@ -216,7 +301,6 @@ function renderUsers(users) {
         
         const initials = getInitials(u.name);
         
-        // Rozdawanie sztywnych kolorów po kolei dla uniknięcia dubli (v7.5)
         const colorComp = DISTINCT_COLORS[index % DISTINCT_COLORS.length];
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
@@ -514,15 +598,14 @@ function openNumpadModal() {
     startIdleTimer('numpad');
 }
 
+// GUI BUTTONS - Zamiast bezposrednio realizować logikę, wywołują strzałkę "wstecz" z przeglądarki
+// Co spina wszystkie zachowania nawigacyjne (sprzętowe i interfejsowe) w jeden popstate
 document.getElementById("btn-qty-cancel").onclick = () => {
+    // Numpad to Overlay, nie ma własnej ścieżki (żeby nie psuć historii), więc obsługujemy go lokalnie 
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
-    
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
-    
-    if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // powrót
-    } else {
+    if(document.getElementById('scanner-box').style.display !== 'none' && hasEan) {
         startScannerView(); 
     }
 };
@@ -584,11 +667,25 @@ document.getElementById("np-del").onclick = () => { let newVal = currentInputVal
 document.querySelectorAll('.btn-quick[data-add]').forEach(btn => { btn.onclick = () => { let newVal = parseInt(currentInputValue) + parseInt(btn.getAttribute('data-add')); if (newVal > targetItem.pozostalo) { flashDisplayError(); btn.classList.add('flash-error'); setTimeout(() => { btn.classList.remove('flash-error'); }, 300); } else { updateDisplay(newVal); } }; });
 document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
 
-function showView(id) {
+// --- GŁÓWNA FUNKCJA WIDOKU (HISTORY API FIX) ---
+function showView(id, pushToHistory = true) {
     stopIdleTimer(); 
+    const currentView = getCurrentViewId();
+    
     ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => { 
         document.getElementById(v).style.display = (v === id) ? 'flex' : 'none'; 
     });
+    
+    const titleBar = document.getElementById('header-title-bar');
+    if (id === 'task-panel' || id === 'scanner-box') {
+        titleBar.style.display = 'none'; 
+    } else {
+        titleBar.style.display = 'flex'; 
+    }
+
+    if (pushToHistory && currentView !== id) {
+        history.pushState({ view: id }, "", "#" + id);
+    }
 }
 
 function showError(m, muteVoice = false) {
@@ -610,28 +707,10 @@ function showError(m, muteVoice = false) {
     setTimeout(() => { o.style.display = "none"; }, 2000);
 }
 
-document.getElementById("btn-logout").onclick = () => {
-    sessionStorage.removeItem('manualUnlock'); isManualUnlocked = false; updateLockUI();
-    stopIdleTimer(); document.getElementById("header-main-row").style.display = "none"; document.getElementById("global-progress-bar").style.display = "none"; initApp();
-};
-
-document.getElementById("btn-back-scan").onclick = () => { 
-    stopIdleTimer(); 
-    if (html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => showView('task-panel')).catch(() => showView('task-panel'));
-    } else {
-        showView('task-panel');
-    }
-};
+// PRZYCISKI UI MAPUJĄCE NA STRZAŁKĘ WSTECZ (Hardware Back Button Parity)
+document.getElementById("btn-logout").onclick = () => { history.back(); };
+document.getElementById("btn-back-scan").onclick = () => { history.back(); };
+document.getElementById("btn-finish-icon").onclick = () => { history.back(); };
 
 document.getElementById("btn-prev").onclick = () => { if(!isProcessing) fetchNext(currentOffset - 1); };
 document.getElementById("btn-next").onclick = () => { if(!isProcessing) fetchNext(currentOffset + 1); };
-document.getElementById("btn-finish-icon").onclick = () => { 
-    stopIdleTimer();
-    if(confirm("Opuścić zamówienie?")) {
-        document.getElementById("header-main-row").style.display = "none";
-        document.getElementById("global-progress-bar").style.display = "none";
-        loadOrders();
-        showView('view-orders-dashboard');
-    }
-};
