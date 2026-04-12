@@ -16,14 +16,13 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 #global-progress-bar { width: 100%; height: 8px; background: #000; border-radius: 4px; overflow: hidden; }
 #global-progress-fill { width: 0%; height: 100%; background: var(--accent-green); transition: width 0.5s ease-out; }
 
-/* KONTENER GŁÓWNY (BARDZO WAŻNE DLA POPRAWNOŚCI WYŚWIETLANIA) */
 #main-view { display: flex; flex-direction: column; flex-grow: 1; position: relative; overflow: hidden; }
 
 /* LOGO & KOMPAKTOWA SIATKA */
 .main-logo-container { width: 100%; display: flex; justify-content: center; align-items: center; padding: 25px 20px 20px; box-sizing: border-box; }
 #main-logo { width: 100%; max-width: 250px; max-height: 90px; height: auto; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); }
 .user-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 15px 15px; overflow-y: auto;}
-.btn-user { background: var(--panel-bg); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 20px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--text-primary); backdrop-filter: blur(20px); transition: transform 0.2s, background-color 0.2s; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+.btn-user { background: var(--panel-bg); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 20px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--text-primary); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transition: transform 0.2s, background-color 0.2s; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 .btn-user:active { transform: scale(0.94); background: rgba(255, 255, 255, 0.1); border-color: rgba(255,255,255,0.3); }
 .user-avatar-icon { width: 50px; height: 50px; background: rgba(255, 255, 255, 0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
 .btn-user span:last-child { font-size: 15px; font-weight: 800; text-align: center;}
@@ -33,12 +32,17 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .loader-text-small { color: var(--text-secondary); font-size: 14px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;}
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* DASHBOARD ZAMÓWIEŃ */
+/* DASHBOARD ZAMÓWIEŃ & KŁÓDKA */
 #view-orders-dashboard { display: flex; flex-direction: column; height: 100%; }
 .dashboard-ctrl { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; }
-#display-user-name { font-weight: 800; font-size: 18px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;}
-.btn-icon-modern { background: rgba(255,69,58,0.15); border: 1px solid rgba(255,69,58,0.3); color: var(--error); width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; }
+.user-info-group { display: flex; align-items: center; gap: 15px; } /* Nowy kontener na imię i kłódkę */
+#display-user-name { font-weight: 800; font-size: 16px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;}
+
+.btn-icon-modern { background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
 .btn-icon-modern:active { transform: scale(0.9); }
+/* Kłódka stany */
+.lock-btn { width: 42px; height: 42px; }
+.lock-btn.unlocked { background: rgba(255, 214, 10, 0.2); border-color: var(--accent-yellow); color: var(--accent-yellow); }
 
 #orders-list-container { padding: 16px 20px; overflow-y: auto; flex-grow: 1; }
 .order-baton { position: relative; background: var(--panel-bg); border: 1px solid var(--border-subtle); border-radius: 22px; height: 86px; margin-bottom: 16px; display: flex; align-items: center; padding: 0 20px; overflow: hidden; cursor: pointer; backdrop-filter: blur(10px); transition: transform 0.15s; box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
@@ -53,38 +57,30 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .status-W { background-color: var(--accent-yellow); box-shadow: 0 0 15px rgba(255, 214, 10, 0.4); }
 .status-U { background-color: var(--accent-green); box-shadow: 0 0 15px rgba(50, 215, 75, 0.4); }
 
-/* --- ELASTYCZNA KARTA PRODUKTU (ZABEZPIECZENIE PRZED CHOWANIEM SIĘ PRZYCISKÓW) --- */
+/* ELASTYCZNA KARTA PRODUKTU */
 #task-panel { display: flex; flex-direction: column; height: 100%; overflow: hidden; padding-bottom: env(safe-area-inset-bottom); }
-
-.task-card { 
-    background: var(--panel-bg); border-radius: 24px; padding: 15px; border: 1px solid var(--border-subtle); 
-    margin: 10px; text-align: center; backdrop-filter: blur(10px); 
-    display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; box-sizing: border-box;
-}
+.task-card { background: var(--panel-bg); border-radius: 24px; padding: 15px; border: 1px solid var(--border-subtle); margin: 10px; text-align: center; backdrop-filter: blur(10px); display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; box-sizing: border-box;}
 
 .task-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
 .btn-circle { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 1px solid var(--border-subtle); color: #fff; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; cursor: pointer; }
 .btn-circle:active { background: rgba(255,255,255,0.3); }
 .task-lp-info { font-size: 14px; color: var(--text-secondary); font-weight: 700;} #task-lp { font-size: 16px; color: #fff; font-weight: 900;}
 
-/* Wnętrze karty, które scrolluje się w przypadku zbyt dużej zawartości */
 .task-content { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center; position: relative;}
 
-/* Przycisk na dole ZAWSZE widoczny */
-.task-action-row { flex-shrink: 0; display: flex; align-items: center; margin-top: 10px; width: 100%; }
-.btn-primary { width: 100%; height: 60px; border-radius: 20px; background: var(--accent-blue); border: none; color: #fff; font-size: 18px; font-weight: 800; transition: transform 0.2s; cursor: pointer; }
+/* PRZYCISKI AKCJI NA KARCIE */
+.task-action-row { flex-shrink: 0; display: flex; align-items: center; margin-top: 10px; width: 100%; gap: 12px; }
+.btn-primary { flex-grow: 1; height: 60px; border-radius: 20px; background: var(--accent-blue); border: none; color: #fff; font-size: 18px; font-weight: 800; transition: transform 0.2s; cursor: pointer; }
 .btn-primary:active { transform: scale(0.96); }
 
-/* Wymuszenie max 2 linii i ucięcia kropek dla długich nazw */
-#task-name { 
-    font-size: 18px; font-weight: 800; line-height: 1.2; margin-bottom: 10px; 
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; height: 2.4em; width: 100%;
-}
+/* Nowy Przycisk Manualny (Klawiatura) */
+.btn-manual-trigger { width: 60px; height: 60px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; display: flex; align-items: center; justify-content: center; transition: all 0.3s; flex-shrink: 0; cursor: pointer;}
+.btn-manual-trigger:not(:disabled) { background: rgba(255, 214, 10, 0.2); color: var(--accent-yellow); border-color: var(--accent-yellow); box-shadow: 0 0 15px rgba(255, 214, 10, 0.2); }
+.btn-manual-trigger:disabled { opacity: 0.2; cursor: not-allowed; }
 
-/* Sztywne wymiary zdjęcia */
+#task-name { font-size: 18px; font-weight: 800; line-height: 1.2; margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; height: 2.4em; width: 100%;}
 .product-image-box { width: 100%; height: 160px; min-height: 160px; flex-shrink: 0; background: #fff; border-radius: 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: zoom-in; }
 #task-img { width: 100%; height: 100%; object-fit: contain; }
-
 .product-meta-row { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 18px; font-weight: 800;}
 #task-kat { color: var(--accent-blue); font-size: 20px; }
 .meta-separator { color: var(--border-subtle); }
@@ -100,22 +96,20 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .loading-mode #freeze-overlay { display: block; }
 #loading-bar-wrapper { display: none; width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 10px; }
 #loading-bar-inner { width: 35%; height: 100%; background: var(--accent-blue); border-radius: 4px; animation: progressMove 1.2s infinite ease-in-out; }
-.loading-mode .btn-primary { display: none; }
+.loading-mode .btn-primary, .loading-mode .btn-manual-trigger { display: none; }
 .loading-mode #loading-bar-wrapper { display: block; }
 @keyframes progressMove { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 
-/* --- SKANER CZYSTY, BEZ DUPLIKATÓW --- */
+/* SKANER */
 #scanner-box { position: relative; width: 100%; flex-grow: 1; background: #000; overflow: hidden; display: flex; flex-direction: column; }
 #reader { width: 100% !important; flex-grow: 1 !important; display: flex;} 
 #reader video { object-fit: cover !important; width: 100%; height: 100%; }
 
-/* Instrukcja z podkładem, żeby nie wtapiała się w obraz */
 #scanner-instruction { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 90%; text-align: center; z-index: 110; pointer-events: none; background: rgba(0,0,0,0.65); padding: 10px; border-radius: 12px; backdrop-filter: blur(5px); }
 .instruction-label { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 1px;}
 #target-kat-display { font-size: 22px; font-weight: 900; margin-top: 5px; display: flex; justify-content: center; align-items: center; gap: 10px; }
 #target-kat-val { color: var(--accent-blue); } #target-size-val { color: var(--error); }
 
-/* Tylko laser, usunięto customowe rogi, biblioteka wyrysuje swoje */
 #scanner-visual { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; pointer-events: none; width: 280px; height: 120px; transition: all 0.3s; }
 #laser-line { position: absolute; top: 50%; left: 10px; right: 10px; height: 3px; background: var(--error); box-shadow: 0 0 12px var(--error); transition: background 0.2s, box-shadow 0.2s; }
 
