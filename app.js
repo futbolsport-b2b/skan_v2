@@ -183,6 +183,9 @@ function playSound(type) {
     }
 }
 
+// ==========================================
+// WERYFIKACJA EAN I KŁÓDKA (v8.4 FIX)
+// ==========================================
 function isEanValid(ean) {
     if (ean === null || ean === undefined) return false;
     const str = String(ean).trim().toUpperCase();
@@ -207,16 +210,27 @@ function updateLockUI() {
     const scanBtn = document.getElementById('btn-scan-item');
     
     if (manualAddBtn && scanBtn) {
-        const hasEan = isEanValid(targetItem ? targetItem.ean : null);
-
-        if (!hasEan) {
-            scanBtn.disabled = true;
-            scanBtn.innerText = "BRAK KODU EAN";
-            manualAddBtn.disabled = false; 
+        if (targetItem) {
+            const hasEan = isEanValid(targetItem.ean);
+            
+            // v8.4 FIX: Jeśli wczytany produkt nie ma EAN, WYMUSZAMY odblokowanie numpada i blokujemy Skaner
+            if (!hasEan) {
+                scanBtn.disabled = true;
+                scanBtn.innerText = "BRAK KODU EAN";
+                manualAddBtn.disabled = false; 
+                manualAddBtn.classList.add('force-unlocked'); // Dodaje żółty styl niezależnie od kłódki
+            } else {
+                scanBtn.disabled = false;
+                scanBtn.innerText = "SKANUJ PRODUKT";
+                manualAddBtn.disabled = !isManualUnlocked; 
+                manualAddBtn.classList.remove('force-unlocked');
+            }
         } else {
+            // Domyślny stan przy uruchomieniu bez załadowanego produktu
             scanBtn.disabled = false;
             scanBtn.innerText = "SKANUJ PRODUKT";
-            manualAddBtn.disabled = !isManualUnlocked; 
+            manualAddBtn.disabled = !isManualUnlocked;
+            manualAddBtn.classList.remove('force-unlocked');
         }
     }
 }
@@ -282,7 +296,6 @@ function renderUsers(users) {
         btn.className = "btn-user";
         
         const initials = getInitials(u.name);
-        
         const colorComp = DISTINCT_COLORS[index % DISTINCT_COLORS.length];
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
@@ -405,7 +418,6 @@ function renderOrdersFromGlobal() {
         return;
     }
 
-    // WERSJA 8.3: Dodanie Kontrahenta do Batonu Zamówienia
     filtered.forEach(o => {
         let fillBg = o.progress === 0 ? 'background: rgba(10, 132, 255, 0.4);' : (o.progress === 100 ? 'background: rgba(50, 215, 75, 0.6);' : `background: linear-gradient(90deg, hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 40%, 0.6), hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 45%, 0.9));`);
         
@@ -415,12 +427,14 @@ function renderOrdersFromGlobal() {
         const baton = document.createElement("div");
         baton.className = `order-baton ${isCompleted ? 'order-completed' : ''}`;
         
+        // v8.4 FIX: Wyraźny Kontrahent obok ID Zamówienia
         baton.innerHTML = `
             <div class="order-content">
                 <div class="order-header">
                     <div class="order-id-group">
                         <div class="order-id-wrapper">
                             <span class="baton-kontrahent">${o.kontrahent}</span>
+                            <span class="kontrahent-sep">|</span>
                             <span class="order-id">${o.id}</span>
                         </div>
                         ${isFastTrack && !isCompleted ? '<span class="fast-track-icon">⚡</span>' : ''}
@@ -464,7 +478,10 @@ function startOrder(id, itemsCount) {
     isFirstScanPerOrder = true; 
 
     document.getElementById("header-main-row").style.display = "flex";
-    document.getElementById("order-val").innerText = "Ładowanie..."; 
+    
+    // v8.4 FIX: Wyczyść pasek roboczy z kontrahenta (zostaje tylko nr zamówienia)
+    document.getElementById("order-val").innerText = id; 
+    
     document.getElementById("global-progress-bar").style.display = "block";
     speakVoice("Pozycji do uszykowania " + itemsCount); 
     fetchNext(0);
@@ -488,12 +505,8 @@ async function fetchNext(offset) {
             targetItem = data.item; currentOffset = data.current_offset;
             document.getElementById("global-progress-fill").style.width = data.progress + "%";
             
-            // WSTRZYKNIĘCIE KONTRAHENTA NA BELKĘ ROBOCZĄ
-            const orderHeader = document.getElementById("order-val");
-            orderHeader.innerHTML = `
-                <span class="kontrahent-text">${targetItem.kontrahent}</span>
-                <span class="order-id-subtext">${currentOrderID}</span>
-            `;
+            // v8.4: Wyświetlamy tylko czyste ID zamówienia w pasku roboczym (Oszczędność miejsca)
+            document.getElementById("order-val").innerText = currentOrderID;
 
             document.getElementById("task-lp").innerText = targetItem.lp; 
             document.getElementById("task-name").innerText = targetItem.nazwa;
@@ -516,6 +529,8 @@ async function fetchNext(offset) {
             } else {
                 imgBox.style.display = "none";
             }
+            
+            // Po załadowaniu danych zaktualizuj blokady (v8.4 FIX)
             updateLockUI();
             setLoadingState(false);
         } else {
@@ -659,6 +674,9 @@ document.getElementById("btn-scan-item").onclick = () => {
 
 document.getElementById('btn-manual-add').onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
+    
+    // v8.4: Blokujemy ręczne wklepanie TYLKO wtedy, gdy towar MA EAN a tryb manualny jest zablokowany.
+    // Jeśli nie ma EANu, uzytkownik wchodzi dalej (kłódka go nie powstrzyma).
     if (!isManualUnlocked && hasEan) return; 
     
     speakVoice("Wprowadzanie ręczne");
