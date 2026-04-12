@@ -163,6 +163,7 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
 };
 
+// --- START APP & GENERATOR AWATARÓW (v7.1 UX Visual Perfect) ---
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
@@ -176,14 +177,14 @@ function getInitials(name) {
     return name.substring(0, 2).toUpperCase();
 }
 
-function getColor(name) {
-    if (!name) return "#555";
+function getColorComponents(name) {
+    if (!name) return { hue: 0, saturation: 0, lightness: 33 };
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = Math.abs(hash % 360);
-    return `hsl(${hue}, 75%, 55%)`; // Jaskrawy pastelowy
+    return { hue: hue, saturation: 75, lightness: 55 }; // Jaskrawy pastelowy
 }
 
 async function initApp() {
@@ -209,21 +210,23 @@ function renderUsers(users) {
         btn.className = "btn-user";
         
         const initials = getInitials(u.name);
-        const color = getColor(u.name);
+        const colorComp = getColorComponents(u.name);
+        const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         
-        btn.style.backgroundColor = color; 
+        // Fix v7.1: Wypełnienie paska ma być minimalnie jaśniejszym tonem tła
+        const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness + 15}%)`;
+        
+        btn.style.backgroundColor = baseColor; 
 
-        // Ikona Paczki z Checkmarkiem (z Twojej wizualizacji)
+        // Ikona Paczki SVG (Minimalistyczna, Biała, Cienkie Linie wg v7.1)
         btn.innerHTML = `
             <div class="user-tile-initials">${initials}</div>
             <div class="user-completed-block">
                 <div class="user-box-icon">
-                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
                         <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                         <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                        <circle cx="18" cy="18" r="6" fill="#fff" stroke="none"></circle>
-                        <path d="M15.5 18l1.5 1.5 3-3" stroke="${color}" stroke-width="2.5"></path>
                     </svg>
                 </div>
                 <div class="user-completed-qty">${u.completed}</div>
@@ -231,7 +234,7 @@ function renderUsers(users) {
             </div>
             <div class="user-tile-progress-container">
                 <div class="user-tile-progress-track">
-                    <div class="user-tile-progress-fill" style="width:${u.progress}%;"></div>
+                    <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillColor};"></div>
                     <div class="user-tile-progress-text">${u.progress}%</div>
                 </div>
             </div>
@@ -356,7 +359,6 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-// --- SKANER CZYSTY (KONTROLA Z ZEWNĄTRZ) ---
 function triggerScanVisual(type) {
     const sv = document.getElementById("scanner-box");
     if(sv) {
