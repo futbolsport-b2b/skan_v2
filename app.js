@@ -9,6 +9,7 @@ let audioCtx = null;
 let wakeLock = null;
 let scanIdleTimer = null; 
 
+// --- SYSTEM AUDIO I WAKELOCK ---
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -96,6 +97,7 @@ function flashDisplayError() {
     setTimeout(() => disp.classList.remove("flash-error"), 300);
 }
 
+// --- TIMER BEZCZYNNOŚCI ---
 function startIdleTimer() {
     stopIdleTimer(); 
     scanIdleTimer = setTimeout(() => {
@@ -111,6 +113,7 @@ function stopIdleTimer() {
     }
 }
 
+// --- INICJALIZACJA APLIKACJI ---
 window.onload = () => initApp();
 
 async function initApp() {
@@ -202,10 +205,7 @@ function startOrder(id, itemsCount) {
     document.getElementById("header-main-row").style.display = "flex";
     document.getElementById("order-val").innerText = id;
     document.getElementById("global-progress-bar").style.display = "block";
-    
-    // ZMODYFIKOWANY KOMUNIKAT GŁOSOWY:
     speakVoice("Ilość pozycji do uszykowania " + itemsCount); 
-    
     fetchNext(0);
 }
 
@@ -281,6 +281,7 @@ async function fetchNext(offset) {
     }
 }
 
+// --- OBSŁUGA ZDJĘĆ ---
 let zoomTimeout = null;
 document.getElementById('task-img').onclick = function() {
     const overlay = document.getElementById('image-zoom-overlay');
@@ -298,6 +299,7 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
+// --- ZAAWANSOWANA OBSŁUGA SKANERA ---
 let torchOn = false;
 document.getElementById('btn-torch').onclick = async () => {
     torchOn = !torchOn;
@@ -316,11 +318,34 @@ async function startScannerView() {
 
     startIdleTimer(); 
 
+    // Optymalizacja pod kątem kodów 1D
+    const formats = [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.EAN_8
+    ];
+
+    const config = {
+        fps: 15, // Więcej czasu procesora na klatkę
+        qrbox: { width: 300, height: 120 }, // Wymuszona strefa odczytu na środku
+        formatsToSupport: formats,
+        aspectRatio: 1.777778, // Format 16:9
+        disableFlip: false // Pomaga przy odwróconych kodach
+    };
+
+    const cameraConstraints = {
+        facingMode: "environment",
+        width: { ideal: 1280, min: 640 }, // Wymuszenie wyższej ostrości
+        height: { ideal: 720, min: 480 },
+        advanced: [{ focusMode: "continuous" }] // Wymuszenie autofocusu
+    };
+
     try {
         if (html5QrCode.isScanning) {
             await html5QrCode.stop();
         }
-        await html5QrCode.start({ facingMode: "environment" }, { fps: 25 }, (text) => {
+        await html5QrCode.start(cameraConstraints, config, (text) => {
             
             stopIdleTimer(); 
             
@@ -347,7 +372,7 @@ async function startScannerView() {
                 setTimeout(() => startIdleTimer(), 2500);
             }
         });
-    } catch(e) { showError("Błąd kamery"); }
+    } catch(e) { showError("Błąd kamery lub brak wsparcia HD"); }
 }
 
 document.getElementById("btn-scan-item").onclick = () => startScannerView();
@@ -357,6 +382,7 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     startScannerView(); 
 };
 
+// --- WYSYŁANIE DANYCH ---
 function sendVal(q) {
     stopIdleTimer();
     const btnOk = document.getElementById("btn-qty-ok");
@@ -409,6 +435,7 @@ function showError(m) {
     setTimeout(() => { o.style.display = "none"; }, 2500);
 }
 
+// --- OBSŁUGA NUMPADA ---
 function updateDisplay(val) {
     currentInputValue = String(val);
     document.getElementById("qty-input-display").innerText = currentInputValue;
@@ -452,6 +479,7 @@ document.querySelectorAll('.btn-quick[data-add]').forEach(btn => {
 
 document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
 
+// --- NAWIGACJA GŁÓWNA ---
 document.getElementById("btn-logout").onclick = () => {
     stopIdleTimer();
     document.getElementById("header-main-row").style.display = "none";
