@@ -3,28 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v4.12</title>
-    <link rel="stylesheet" href="style.css?v=4.12">
+    <title>B2B TERMINAL v4.14</title>
+    <link rel="stylesheet" href="style.css?v=4.14">
     <meta name="theme-color" content="#000000">
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body class="ean-mode">
     <div id="error-overlay" style="display:none;"><div id="error-text">BŁĄD</div></div>
-    <div id="image-zoom-overlay" style="display:none; opacity:0; transition: opacity 0.3s;"><img id="zoomed-img" src="" alt="Powiększenie"></div>
+    
+    <div id="image-zoom-overlay" style="display:none; opacity:0; transition: opacity 0.3s;">
+        <img id="zoomed-img" src="" alt="Powiększenie">
+    </div>
     
     <div class="app-container">
         <header id="main-header">
-            <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI B2B VER. 4.12</div>
+            <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI B2B VER. 4.14</div>
+            
             <div class="header-main-row" id="header-main-row" style="display: none;">
                 <div id="order-val"></div>
                 <button id="btn-finish-icon">ZAKOŃCZ</button>
             </div>
-            <div id="global-progress-bar" style="display:none;"><div id="global-progress-fill"></div></div>
+            <div id="global-progress-bar" style="display:none;">
+                <div id="global-progress-fill"></div>
+            </div>
         </header>
 
         <main id="main-view">
             <section id="view-user-selection">
-                <div class="main-logo-container"><img src="logo.png" alt="Logo" id="main-logo"></div>
+                <div class="main-logo-container">
+                    <img src="logo.png" alt="Logo" id="main-logo">
+                </div>
                 <div id="user-list" class="user-grid"></div>
             </section>
 
@@ -56,11 +64,9 @@
                     <span class="instruction-label">ZESKANUJ PRODUKT:</span>
                     <div id="target-kat-display"><span id="target-kat-val">---</span><span class="ean-meta-sep">|</span><span class="ean-size-container"><b>ROZ:</b> <b id="target-size-val">---</b></span></div>
                 </div>
-                
                 <div id="reader"></div>
                 
                 <div id="scanner-visual">
-                    <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
                     <div id="laser-line"></div>
                 </div>
             </section>
@@ -76,8 +82,14 @@
                     <div class="task-content" id="product-data-area">
                         <div id="freeze-overlay"></div>
                         <h1 id="task-name">Ładowanie...</h1>
-                        <div class="product-image-box" id="product-image-box" style="display:none;"><img id="task-img" src="" alt="Zdjęcie produktu"></div>
-                        <div class="product-meta-row"><span id="task-kat">---</span><span class="meta-separator">|</span><span class="size-label">ROZ: <b id="task-size">---</b></span></div>
+                        
+                        <div class="product-image-box" id="product-image-box" style="display:none;">
+                            <img id="task-img" src="" alt="Zdjęcie produktu">
+                        </div>
+
+                        <div class="product-meta-row">
+                            <span id="task-kat">---</span><span class="meta-separator">|</span><span class="size-label">ROZ: <b id="task-size">---</b></span>
+                        </div>
                         <div class="task-qty-box"><span class="qty-label">DO POBRANIA</span><div id="task-qty">0</div></div>
                         <div id="task-notes-row" style="display:none;">UWAGI: <b id="task-notes">---</b></div>
                     </div>
@@ -100,7 +112,11 @@
                     <span id="qty-kat-val">Nr Kat: ---</span>
                 </div>
                 <div class="remain-badge">Pozostało do zebrania: <b id="qty-remain">0</b></div>
-                <div class="quick-add-row"><button class="btn-quick" data-add="1">+1</button><button class="btn-quick" data-add="5">+5</button><button class="btn-quick" id="btn-quick-max">MAX</button></div>
+                <div class="quick-add-row">
+                    <button class="btn-quick" data-add="1">+1</button>
+                    <button class="btn-quick" data-add="5">+5</button>
+                    <button class="btn-quick" id="btn-quick-max">MAX</button>
+                </div>
                 <div id="qty-input-display" class="custom-input-display">0</div>
                 <div class="custom-numpad">
                     <button class="np-btn" data-val="1">1</button><button class="np-btn" data-val="2">2</button><button class="np-btn" data-val="3">3</button>
@@ -108,10 +124,13 @@
                     <button class="np-btn" data-val="7">7</button><button class="np-btn" data-val="8">8</button><button class="np-btn" data-val="9">9</button>
                     <button class="np-btn np-action" id="np-clear">C</button><button class="np-btn" data-val="0">0</button><button class="np-btn np-action" id="np-del">⌫</button>
                 </div>
-                <div class="modal-action-row"><button id="btn-qty-cancel" class="btn-cancel">ANULUJ</button><button id="btn-qty-ok" class="btn-success">ZATWIERDŹ</button></div>
+                <div class="modal-action-row">
+                    <button id="btn-qty-cancel" class="btn-cancel">ANULUJ</button>
+                    <button id="btn-qty-ok" class="btn-success">ZATWIERDŹ</button>
+                </div>
             </div>
         </div>
     </div>
-    <script src="app.js?v=4.12"></script>
+    <script src="app.js?v=4.14"></script>
 </body>
 </html>
