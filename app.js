@@ -8,7 +8,24 @@ const html5QrCode = new Html5Qrcode("reader");
 let audioCtx = null;
 let wakeLock = null;
 let scanIdleTimer = null; 
+let isManualUnlocked = sessionStorage.getItem('manualUnlock') === 'true'; // Zapis stanu kłódki
 
+// --- WAKELOCK (Blokada wygaszania ekranu) ---
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => { wakeLock = null; });
+        }
+    } catch (err) {
+        console.warn("WakeLock error:", err);
+    }
+}
+document.addEventListener('visibilitychange', () => {
+    if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
+});
+
+// --- AUDIO SYSTEM ---
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -29,19 +46,6 @@ function unlockAudioAPI() {
 }
 document.body.addEventListener('click', unlockAudioAPI, { once: true });
 document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
-
-async function requestWakeLock() {
-    try {
-        if ('wakeLock' in navigator) {
-            wakeLock = await navigator.wakeLock.request('screen');
-            wakeLock.addEventListener('release', () => { wakeLock = null; });
-        }
-    } catch (err) {}
-}
-document.addEventListener('visibilitychange', () => {
-    if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
-});
-requestWakeLock();
 
 function speakVoice(text) {
     if ('speechSynthesis' in window) {
@@ -78,6 +82,47 @@ function playSound(type) {
     }
 }
 
+// --- LOGIKA KŁÓDKI (TRYB RĘCZNY) ---
+function updateLockUI() {
+    const btn = document.getElementById('btn-manual-lock');
+    const iconClosed = document.getElementById('icon-lock-closed');
+    const iconOpen = document.getElementById('icon-lock-open');
+    const manualAddBtn = document.getElementById('btn-manual-add');
+    
+    if (isManualUnlocked) {
+        btn.classList.add('unlocked');
+        iconClosed.style.display = 'none';
+        iconOpen.style.display = 'block';
+        if (manualAddBtn) manualAddBtn.disabled = false;
+    } else {
+        btn.classList.remove('unlocked');
+        iconClosed.style.display = 'block';
+        iconOpen.style.display = 'none';
+        if (manualAddBtn) manualAddBtn.disabled = true;
+    }
+}
+
+document.getElementById('btn-manual-lock').onclick = function() {
+    isManualUnlocked = !isManualUnlocked;
+    sessionStorage.setItem('manualUnlock', isManualUnlocked);
+    updateLockUI();
+    
+    if (isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
+    else speakVoice("Tryb ręczny zablokowany");
+};
+
+// --- TIMERY ---
+function startIdleTimer() {
+    stopIdleTimer(); 
+    scanIdleTimer = setTimeout(() => {
+        speakVoice("Skanuj produkt");
+        startIdleTimer(); 
+    }, 10000); 
+}
+function stopIdleTimer() {
+    if (scanIdleTimer) { clearTimeout(scanIdleTimer); scanIdleTimer = null; }
+}
+
 function triggerScanVisual(type) {
     const sv = document.getElementById("scanner-visual");
     if(sv) {
@@ -96,22 +141,10 @@ function flashDisplayError() {
     setTimeout(() => disp.classList.remove("flash-error"), 300);
 }
 
-function startIdleTimer() {
-    stopIdleTimer(); 
-    scanIdleTimer = setTimeout(() => {
-        speakVoice("Skanuj produkt");
-        startIdleTimer(); 
-    }, 10000); // Zmieniono na 10 sekund zgodnie z zaleceniem
-}
-
-function stopIdleTimer() {
-    if (scanIdleTimer) {
-        clearTimeout(scanIdleTimer);
-        scanIdleTimer = null;
-    }
-}
-
-window.onload = () => initApp();
+window.onload = () => {
+    updateLockUI(); // Inicjalizacja stanu kłódki na start
+    initApp();
+};
 
 async function initApp() {
     stopIdleTimer();
@@ -140,7 +173,10 @@ function renderUsers(users) {
         const btn = document.createElement("button");
         btn.className = "btn-user";
         btn.innerHTML = `<div class="user-avatar-icon">👤</div><span>${u}</span>`;
-        btn.onclick = () => selectUser(u);
+        btn.onclick = () => {
+            requestWakeLock(); // Włączenie WakeLock po zalogowaniu
+            selectUser(u);
+        };
         list.appendChild(btn);
     });
 }
@@ -215,7 +251,9 @@ function setLoadingState(active) {
 async function fetchNext(offset) {
     stopIdleTimer();
     showView('task-panel');
+    updateLockUI(); // Zawsze upewnij się, że UI kłódki na nowej karcie jest poprawne
     setLoadingState(true);
+    
     try {
         const res = await fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&action=get_next&offset=${offset}`);
         const data = await res.json();
@@ -278,6 +316,24 @@ async function fetchNext(offset) {
     }
 }
 
+// Funkcja otwierająca MODAL (wspólna dla Skanera i Manuala)
+function openNumpadModal() {
+    currentInputValue = "0";
+    document.getElementById("qty-input-display").innerText = "0";
+    document.getElementById("qty-name").innerText = targetItem.nazwa;
+    document.getElementById("qty-kat-val").innerHTML = "Nr Kat: " + targetItem.nr_kat;
+    document.getElementById("qty-remain").innerText = targetItem.pozostalo;
+    document.getElementById("qty-modal").style.display = "flex";
+    speakVoice(`Pobierz ${targetItem.pozostalo} sztuk`);
+}
+
+// --- AKCJA: MANUALNY DODATEK ---
+document.getElementById('btn-manual-add').onclick = () => {
+    if (!isManualUnlocked) return; // Zabezpieczenie
+    speakVoice("Wprowadzanie ręczne");
+    openNumpadModal();
+};
+
 let zoomTimeout = null;
 document.getElementById('task-img').onclick = function() {
     const overlay = document.getElementById('image-zoom-overlay');
@@ -304,7 +360,7 @@ document.getElementById('btn-torch').onclick = async () => {
     } catch(e) { torchOn = false; alert("Latarka niedostępna"); }
 };
 
-// Czysty i bezpieczny skaner
+// --- BEZPIECZNY SKANER ---
 async function startScannerView() {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
@@ -314,7 +370,6 @@ async function startScannerView() {
 
     startIdleTimer(); 
 
-    // Ograniczenie do formatów magazynowych
     const formats = [
         Html5QrcodeSupportedFormats.EAN_13,
         Html5QrcodeSupportedFormats.CODE_39,
@@ -322,7 +377,6 @@ async function startScannerView() {
         Html5QrcodeSupportedFormats.EAN_8
     ];
 
-    // Bezpieczny config z maską cięcia (qrbox) pasującą do rozmiaru scanner-visual
     const config = {
         fps: 15, 
         qrbox: { width: 280, height: 120 }, 
@@ -336,7 +390,6 @@ async function startScannerView() {
         }
         
         await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-            
             stopIdleTimer(); 
             
             if(text.trim() === String(targetItem.ean)) {
@@ -346,13 +399,7 @@ async function startScannerView() {
                 if (html5QrCode.isScanning) {
                     html5QrCode.stop().then(() => {
                         if(targetItem.pozostalo > 1) { 
-                            currentInputValue = "0";
-                            document.getElementById("qty-input-display").innerText = "0";
-                            document.getElementById("qty-name").innerText = targetItem.nazwa;
-                            document.getElementById("qty-kat-val").innerHTML = "Nr Kat: " + targetItem.nr_kat;
-                            document.getElementById("qty-remain").innerText = targetItem.pozostalo;
-                            document.getElementById("qty-modal").style.display = "flex";
-                            speakVoice(`Pobierz ${targetItem.pozostalo} sztuk`);
+                            openNumpadModal();
                         } else { sendVal(1); }
                     }).catch(e => console.error("Kamera stop error", e));
                 }
@@ -409,7 +456,6 @@ function showView(id) {
         document.getElementById(v).style.display = (v === id) ? 'block' : 'none';
     });
     
-    // Kluczowa zmiana: ukrywanie napisu systemowego dla odzyskania miejsca
     const brandTitle = document.getElementById('brand-title');
     if (id === 'task-panel' || id === 'scanner-box') {
         brandTitle.style.display = 'none';
@@ -480,6 +526,12 @@ document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetIte
 
 document.getElementById("btn-logout").onclick = () => {
     stopIdleTimer();
+    
+    // Zablokuj i wyczyść z pamięci manualUnlock przy wylogowaniu
+    sessionStorage.removeItem('manualUnlock');
+    isManualUnlocked = false;
+    updateLockUI();
+    
     document.getElementById("header-main-row").style.display = "none";
     document.getElementById("global-progress-bar").style.display = "none";
     initApp();
