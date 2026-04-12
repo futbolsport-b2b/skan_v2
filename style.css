@@ -18,9 +18,7 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 
 #main-view { display: flex; flex-direction: column; flex-grow: 1; position: relative; overflow: hidden; }
 
-/* ----------------------------------------- */
-/* LOGO & KOMPAKTOWA SIATKA                  */
-/* ----------------------------------------- */
+/* LOGO & KOMPAKTOWA SIATKA */
 .main-logo-container {
     width: 100%; display: flex; justify-content: center; align-items: center;
     padding: 25px 20px 20px; box-sizing: border-box;
@@ -41,7 +39,7 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .loader-text-small { color: var(--text-secondary); font-size: 14px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;}
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* WIDOK: DASHBOARD ZAMÓWIEŃ */
+/* DASHBOARD ZAMÓWIEŃ */
 .dashboard-ctrl { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; }
 #display-user-name { font-weight: 800; font-size: 18px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;}
 .btn-icon-modern { background: rgba(255,69,58,0.15); border: 1px solid rgba(255,69,58,0.3); color: var(--error); width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s, background 0.2s; }
