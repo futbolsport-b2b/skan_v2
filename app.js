@@ -26,7 +26,7 @@ let currentIdleContext = null;
 // --- HISTORY API ---
 function getCurrentViewId() {
     const views = ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'];
-    return views.find(v => document.getElementById(v).style.display !== 'none');
+    return views.find(v => document.getElementById(v).style.display === 'flex');
 }
 
 window.addEventListener('popstate', (event) => {
@@ -248,45 +248,58 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręcznego wprowadzania Aktywny");
 };
 
+// PRZYCISK LIVE SYNC
+document.getElementById('btn-refresh-orders').onclick = async function() {
+    this.classList.add('spin-anim');
+    await loadOrders();
+    this.classList.remove('spin-anim');
+};
+
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
     initApp();
 };
 
-function getInitials(name) {
-    if (!name) return "??";
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + "." + parts[1][0] + ".").toUpperCase();
-    return name.substring(0, 2).toUpperCase();
-}
+const MALE_COLORS = [
+    { hue: 210, saturation: 90, lightness: 45 }, 
+    { hue: 350, saturation: 85, lightness: 45 }, 
+    { hue: 130, saturation: 75, lightness: 35 }, 
+    { hue: 280, saturation: 80, lightness: 50 }, 
+    { hue: 25,  saturation: 95, lightness: 45 }, 
+    { hue: 180, saturation: 85, lightness: 35 }, 
+    { hue: 240, saturation: 85, lightness: 55 }, 
+    { hue: 0,   saturation: 0,  lightness: 35 }  
+];
 
-const DISTINCT_COLORS = [
-    { hue: 210, saturation: 90, lightness: 55 }, 
-    { hue: 350, saturation: 85, lightness: 55 }, 
-    { hue: 130, saturation: 75, lightness: 45 }, 
-    { hue: 280, saturation: 80, lightness: 60 }, 
-    { hue: 25,  saturation: 95, lightness: 50 }, 
-    { hue: 180, saturation: 85, lightness: 40 }, 
-    { hue: 320, saturation: 80, lightness: 60 }, 
-    { hue: 75,  saturation: 80, lightness: 40 }, 
-    { hue: 240, saturation: 85, lightness: 65 }, 
-    { hue: 0,   saturation: 0,  lightness: 45 }  
+const FEMALE_COLORS = [
+    { hue: 340, saturation: 70, lightness: 65 }, 
+    { hue: 290, saturation: 50, lightness: 65 }, 
+    { hue: 170, saturation: 50, lightness: 55 }, 
+    { hue: 20,  saturation: 80, lightness: 65 }, 
+    { hue: 200, saturation: 70, lightness: 65 }, 
+    { hue: 320, saturation: 60, lightness: 65 }  
 ];
 
 function getColorComponents(name) {
-    if (!name) return DISTINCT_COLORS[0];
+    if (!name) return MALE_COLORS[0];
     const cleanName = name.trim().toUpperCase();
-    
+
     if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
-        return { hue: 45, saturation: 100, lightness: 50 }; 
+        return { hue: 45, saturation: 100, lightness: 45 }; 
     }
-    
+
+    const firstName = cleanName.split(/\s+/)[0];
+    const isFemale = firstName.endsWith('A') && firstName !== "KUBA" && firstName !== "BARNABA";
+
+    const palette = isFemale ? FEMALE_COLORS : MALE_COLORS;
+
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    return DISTINCT_COLORS[Math.abs(hash) % DISTINCT_COLORS.length];
+    
+    return palette[Math.abs(hash) % palette.length];
 }
 
 async function initApp() {
@@ -301,7 +314,41 @@ async function initApp() {
     try {
         const resp = await fetch(`${SCRIPT_URL}?action=get_users`);
         const data = await resp.json();
-        if(data.status === "success") renderUsers(data.users);
+        
+        if(data.status === "success") {
+            
+            // 1. Zbuduj mapę stabilnych inicjałów (Zawsze ta sama kolejność do wyliczania dubli)
+            let alphaUsers = [...data.users].sort((a, b) => String(a.name).localeCompare(String(b.name), 'pl'));
+            let seenInitials = new Set();
+            window.userInitialsMap = {};
+            
+            alphaUsers.forEach(u => {
+                let name = String(u.name).trim();
+                let parts = name.split(/\s+/);
+                let initial = "??";
+                
+                if (parts.length >= 2) {
+                    initial = `${parts[0][0].toUpperCase()}.${parts[1][0].toUpperCase()}.`;
+                    if (seenInitials.has(initial) && parts[1].length >= 2) {
+                        // KOLIZJA! Dodajemy drugą literę nazwiska
+                        initial = `${parts[0][0].toUpperCase()}.${parts[1].substring(0, 2).toUpperCase()}.`;
+                    }
+                } else if (parts.length === 1) {
+                    initial = name.substring(0, 2).toUpperCase() + ".";
+                }
+                
+                seenInitials.add(initial);
+                window.userInitialsMap[u.name] = initial;
+            });
+
+            // 2. Posortuj po Top Performers do wyświetlenia
+            data.users.sort((a, b) => {
+                if (b.completed !== a.completed) return b.completed - a.completed;
+                return String(a.name).localeCompare(String(b.name), 'pl'); 
+            });
+            
+            renderUsers(data.users);
+        }
         else showError(data.msg);
     } catch(e) { showError("Błąd połączenia z bazą"); }
 }
@@ -311,30 +358,33 @@ function renderUsers(users) {
     list.innerHTML = "";
     userColorsMap = {}; 
     
-    users.forEach((u, index) => {
+    users.forEach((u) => {
         const btn = document.createElement("button");
         btn.className = "btn-user";
         
-        const initials = getInitials(u.name);
+        // POBRANIE STABILNYCH INICJAŁÓW Z MAPY (Rozwiązanie Kolizji)
+        const initials = window.userInitialsMap[u.name] || "??";
         
-        let colorComp;
-        if (initials === "Ł.C." || initials === "ŁC" || initials === "Ł. C.") {
-            colorComp = { hue: 45, saturation: 100, lightness: 50 }; 
-        } else {
-            colorComp = DISTINCT_COLORS[index % DISTINCT_COLORS.length];
-        }
+        const cleanName = String(u.name).trim().toUpperCase();
+        const isGold = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
         
+        const colorComp = getColorComponents(u.name);
         userColorsMap[u.name] = colorComp;
 
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
         
         const isLow = u.progress < 15;
-        const textColor = isLow ? baseColor : "#ffffff";
         const textLeft = isLow ? `calc(${u.progress}% + 6px)` : `calc(${u.progress}% - 6px)`;
         const textTransform = isLow ? `translate(0, -50%)` : `translate(-100%, -50%)`;
 
-        btn.style.backgroundColor = baseColor; 
+        if (isGold) {
+            btn.classList.add("vip-gold");
+        } else {
+            btn.style.backgroundColor = baseColor;
+        }
+
+        const textColor = isLow ? baseColor : "#ffffff";
 
         btn.innerHTML = `
             <div class="user-tile-top">
@@ -376,12 +426,20 @@ function renderUsers(users) {
 function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     
-    const colorComp = userColorsMap[user] || { hue: 210, saturation: 90, lightness: 60 };
-    const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
+    const cleanName = String(user).trim().toUpperCase();
+    const isGold = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
     
     const nameDisplay = document.getElementById("display-user-name");
     nameDisplay.innerText = user;
-    nameDisplay.style.color = baseColor;
+    nameDisplay.className = ""; 
+    
+    if (isGold) {
+        nameDisplay.classList.add("vip-gold-text");
+    } else {
+        const colorComp = userColorsMap[user] || getColorComponents(user);
+        const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
+        nameDisplay.style.color = baseColor;
+    }
     
     activeDashboardTab = 'todo';
     activeSearchQuery = ""; 
@@ -650,9 +708,6 @@ document.getElementById('btn-torch').onclick = async () => {
     catch(e) { torchOn = false; alert("Latarka niedostępna"); }
 };
 
-// ==========================================
-// FIX KAMERY (Soft Cold Start)
-// ==========================================
 async function startScannerView() {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
@@ -684,13 +739,11 @@ async function startScannerView() {
             html5QrCode.clear(); 
         }
 
-        // 1. Zawsze pokazujemy Loader przed startem kamery
         document.getElementById('scanner-loader').style.display = 'flex';
         
         let scanMatched = false; 
         let errorCooldown = false; 
 
-        // 2. Startujemy stream TYLKO RAZ
         await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
             if (scanMatched || errorCooldown) return; 
 
@@ -721,7 +774,6 @@ async function startScannerView() {
                 
                 setTimeout(() => {
                     errorCooldown = false;
-                    // FIX TIMERA: Sprawdza !== 'none', a nie flex/block
                     if (document.getElementById('scanner-box').style.display !== 'none') {
                         startIdleTimer('scan');
                     }
@@ -729,7 +781,6 @@ async function startScannerView() {
             }
         });
 
-        // 3. Po udanym starcie odczekujemy i zdejmujemy loader (Soft Cold Start)
         setTimeout(() => {
             document.getElementById('scanner-loader').style.display = 'none';
             if(sv) sv.classList.add('scanner-ready');
@@ -740,8 +791,7 @@ async function startScannerView() {
 
     } catch(e) { 
         document.getElementById('scanner-loader').style.display = 'none';
-        console.error("Camera Init Error:", e);
-        showError("Błąd kamery. Odśwież stronę lub sprawdź uprawnienia.", true); 
+        showError("Błąd kamery. Odśwież stronę.", true); 
     }
 }
 
