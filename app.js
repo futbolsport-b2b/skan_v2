@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_f0oHIscnnmkMsWOfowbWl7AQ5GiuJgmBhgUAGJIIPXgs1-7q3-IWv35SpqAjxF_w/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr9kogYir85gTOMwKpvz4kHj4LcyjIL0q1bYXHztibIw5a9p4pTMtNqdkCTeTFaGa0/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -6,6 +6,10 @@ let currentOffset = 0, currentInputValue = "0", isProcessing = false;
 let isManualUnlocked = sessionStorage.getItem('manualUnlock') === 'true'; 
 
 let isFirstScanPerOrder = true; 
+
+// --- DASHBOARD v8.0 STATE ---
+let globalOrders = []; 
+let activeDashboardTab = 'todo'; // 'todo' | 'done'
 
 const html5QrCode = new Html5Qrcode("reader");
 
@@ -16,7 +20,7 @@ let idleTimer = null;
 let currentIdleContext = null; 
 
 // ==========================================
-// NOWOŚĆ v7.7: HISTORY API (ZARZĄDZANIE STRZAŁKĄ WSTECZ)
+// HISTORY API
 // ==========================================
 function getCurrentViewId() {
     const views = ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'];
@@ -24,7 +28,6 @@ function getCurrentViewId() {
 }
 
 window.addEventListener('popstate', (event) => {
-    // 1. Jeśli otwarty jest Modal z klawiaturą, zamknij go i nie cofaj widoku
     if (document.getElementById('qty-modal').style.display === 'flex') {
         document.getElementById('qty-modal').style.display = 'none';
         stopIdleTimer(); 
@@ -32,14 +35,11 @@ window.addEventListener('popstate', (event) => {
         if(document.getElementById('scanner-box').style.display !== 'none' && hasEan) {
             startScannerView(); 
         }
-        
-        // Zabezpieczamy historię - nadpisujemy stan, żeby użytkownik fizycznie "nie cofnął się" ze strony
         const currentView = getCurrentViewId();
         history.pushState({ view: currentView }, "", "#" + currentView);
         return;
     }
     
-    // 2. Jeśli otwarte jest zdjęcie produktu (Zoom), zamknij je i nie cofaj widoku
     if (document.getElementById('image-zoom-overlay').style.display === 'flex') {
         closeZoom();
         const currentView = getCurrentViewId();
@@ -53,7 +53,6 @@ window.addEventListener('popstate', (event) => {
     const targetView = state.view;
     const currentView = getCurrentViewId();
 
-    // Wyjście ze Skanera za pomocą strzałki w telefonie
     if (currentView === 'scanner-box' && targetView === 'task-panel') {
         stopIdleTimer(); 
         if (html5QrCode.isScanning) {
@@ -64,7 +63,6 @@ window.addEventListener('popstate', (event) => {
         return;
     }
 
-    // Wyjście z Zamówienia za pomocą strzałki w telefonie (Zabezpieczenie alertem!)
     if (currentView === 'task-panel' && targetView === 'view-orders-dashboard') {
         stopIdleTimer();
         if(confirm("Opuścić zamówienie?")) {
@@ -73,38 +71,29 @@ window.addEventListener('popstate', (event) => {
             loadOrders();
             showView('view-orders-dashboard', false);
         } else {
-            // Anulowano, odrzucamy cofnięcie i przywracamy hash karty
             history.pushState({ view: 'task-panel' }, "", "#task-panel");
         }
         return;
     }
 
-    // Wylogowanie z Dashboardu na stronę główną
     if (currentView === 'view-orders-dashboard' && targetView === 'view-user-selection') {
         sessionStorage.removeItem('manualUnlock'); isManualUnlocked = false; updateLockUI();
         stopIdleTimer(); 
         document.getElementById("header-main-row").style.display = "none"; 
         document.getElementById("global-progress-bar").style.display = "none"; 
-        initApp(); // initApp sam ustawi history.replaceState
+        initApp(); 
         return;
     }
 
-    // Standardowe przejście (fallback)
     showView(targetView, false);
 });
 
-
-// --- TIMERY I STATUS SYSTEMU ---
 function startIdleTimer(context) {
     stopIdleTimer(); 
     currentIdleContext = context;
-    
     idleTimer = setTimeout(() => {
-        if (currentIdleContext === 'scan') {
-            speakVoice("Skanuj produkt");
-        } else if (currentIdleContext === 'numpad') {
-            speakVoice("Wprowadź ilość");
-        }
+        if (currentIdleContext === 'scan') speakVoice("Skanuj produkt");
+        else if (currentIdleContext === 'numpad') speakVoice("Wprowadź ilość");
         startIdleTimer(currentIdleContext); 
     }, 10000); 
 }
@@ -141,7 +130,6 @@ document.addEventListener('visibilitychange', () => {
     if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
 
-// --- AUDIO & TTS ---
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -244,7 +232,6 @@ document.getElementById('btn-manual-lock').onclick = function() {
 };
 
 
-// --- START APP & AWATARY ---
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
@@ -277,7 +264,6 @@ async function initApp() {
     stopIdleTimer();
     document.getElementById("image-zoom-overlay").style.display = "none";
     
-    // Inicjalizacja historii dla pierwszego ekranu
     showView('view-user-selection', false);
     history.replaceState({ view: 'view-user-selection' }, "", "#view-user-selection");
     
@@ -320,7 +306,7 @@ function renderUsers(users) {
             <div class="user-tile-bottom">
                 <div class="user-completed-row">
                     <div class="user-box-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24">
+                        <svg width="26" height="26" viewBox="0 0 24 24">
                           <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
                           <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
                           <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
@@ -352,14 +338,34 @@ function renderUsers(users) {
 function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     document.getElementById("display-user-name").innerText = user;
-    showView('view-orders-dashboard'); loadOrders();
+    
+    // Reset Dashboard State
+    activeDashboardTab = 'todo';
+    document.getElementById('input-search-orders').value = '';
+    switchTab('todo'); // update UI buttons
+    
+    showView('view-orders-dashboard'); 
+    loadOrders();
 
     Html5Qrcode.getCameras().then(devices => {
         if (devices && devices.length) console.log("Kamera autoryzowana w tle");
-    }).catch(err => {
-        console.warn("Brak uprawnień kamery na starcie", err);
-    });
+    }).catch(err => {});
 }
+
+// =========================================================
+// DASHBOARD LOGIC (v8.0: Tabs, Search, Sorting)
+// =========================================================
+
+function switchTab(tab) {
+    activeDashboardTab = tab;
+    document.getElementById('tab-todo').classList.toggle('active', tab === 'todo');
+    document.getElementById('tab-done').classList.toggle('active', tab === 'done');
+    renderOrdersFromGlobal();
+}
+
+document.getElementById('input-search-orders').addEventListener('input', function() {
+    renderOrdersFromGlobal();
+});
 
 async function loadOrders() {
     const container = document.getElementById("orders-list-container");
@@ -367,23 +373,103 @@ async function loadOrders() {
     try {
         const resp = await fetch(`${SCRIPT_URL}?action=get_orders_list&userName=${encodeURIComponent(currentUser)}`);
         const data = await resp.json();
-        container.innerHTML = "";
         
         if (data.orders.length === 0) {
+            globalOrders = [];
             container.innerHTML = "<div class='view-label' style='text-transform:none; margin-top: 50px;'>Brak przypisanych zamówień.</div>";
             return;
         }
 
-        data.orders.forEach(o => {
-            let fillBg = o.progress === 0 ? 'background: rgba(10, 132, 255, 0.15);' : (o.progress === 100 ? 'background: rgba(50, 215, 75, 0.25);' : `background: linear-gradient(90deg, hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 45%, 0.1), hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 40%, 0.4));`);
-            const baton = document.createElement("div");
-            baton.className = "order-baton";
-            baton.innerHTML = `<div class="order-progress-fill" style="width:${o.progress}%; ${fillBg}"></div><div class="order-content"><div class="order-id">${o.id}</div><div class="order-meta-group"><span class="order-percent">${o.progress}%</span><div class="status-badge status-${o.status}">${o.status}</div></div></div>`;
-            baton.onclick = () => startOrder(o.id, o.itemsCount);
-            container.appendChild(baton);
-        });
+        globalOrders = data.orders; // Cache orders globally
+        renderOrdersFromGlobal();
+
     } catch(e) { showError("Błąd wczytywania zamówień"); }
 }
+
+function renderOrdersFromGlobal() {
+    const container = document.getElementById("orders-list-container");
+    container.innerHTML = "";
+
+    const searchQuery = document.getElementById('input-search-orders').value.toLowerCase().trim();
+
+    // 1. Filtrowanie po Tabie
+    let filtered = globalOrders.filter(o => {
+        if (activeDashboardTab === 'todo') return o.status !== 'U';
+        return o.status === 'U';
+    });
+
+    // 2. Filtrowanie po wpisanym numerze (Live Search)
+    if (searchQuery) {
+        filtered = filtered.filter(o => String(o.id).toLowerCase().includes(searchQuery));
+    }
+
+    // 3. Sortowanie: w zakładce "DO ZROBIENIA" priorytet 'W' idzie na górę
+    if (activeDashboardTab === 'todo') {
+        filtered.sort((a, b) => {
+            if (a.status === 'W' && b.status !== 'W') return -1;
+            if (a.status !== 'W' && b.status === 'W') return 1;
+            return 0;
+        });
+    }
+
+    if (filtered.length === 0) {
+        container.innerHTML = "<div class='view-label' style='text-transform:none; margin-top: 50px;'>Brak wyników.</div>";
+        return;
+    }
+
+    // 4. Render HTML
+    filtered.forEach(o => {
+        let fillBg = o.progress === 0 ? 'background: rgba(10, 132, 255, 0.15);' : (o.progress === 100 ? 'background: rgba(50, 215, 75, 0.25);' : `background: linear-gradient(90deg, hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 45%, 0.1), hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 40%, 0.4));`);
+        
+        const isCompleted = o.status === 'U';
+        const isFastTrack = (o.remPositions === 1); // Odznaka błyskawicy
+        
+        const baton = document.createElement("div");
+        baton.className = `order-baton ${isCompleted ? 'order-completed' : ''}`;
+        
+        baton.innerHTML = `
+            <div class="order-progress-fill" style="width:${o.progress}%; ${fillBg}"></div>
+            <div class="order-content">
+                
+                <div class="order-header">
+                    <div class="order-id-group">
+                        <span class="order-id">${o.id}</span>
+                        ${isFastTrack && !isCompleted ? '<span class="fast-track-icon">⚡</span>' : ''}
+                    </div>
+                    <div class="status-badge status-${o.status}">${o.status}</div>
+                </div>
+
+                <div class="order-details">
+                    <div class="order-workload">
+                        <div class="order-box-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24">
+                              <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
+                              <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
+                              <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
+                              <path d="M12 13 L12 23" stroke="#fff" stroke-width="1.5"/>
+                            </svg>
+                        </div>
+                        <span>${isCompleted ? 'Gotowe' : `${o.remPositions} poz. (${o.remPieces} szt.)`}</span>
+                    </div>
+                    <div class="order-percent">${o.progress}%</div>
+                </div>
+
+            </div>
+        `;
+        
+        baton.onclick = () => {
+            // OCHRONA UX (Zablokowane wejście w zamknięte zamówienia)
+            if (isCompleted) {
+                showError("ZAMÓWIENIE ZAKOŃCZONE", true);
+                return;
+            }
+            startOrder(o.id, o.remPositions);
+        };
+        
+        container.appendChild(baton);
+    });
+}
+
 
 function startOrder(id, itemsCount) {
     currentOrderID = id;
@@ -598,14 +684,15 @@ function openNumpadModal() {
     startIdleTimer('numpad');
 }
 
-// GUI BUTTONS - Zamiast bezposrednio realizować logikę, wywołują strzałkę "wstecz" z przeglądarki
-// Co spina wszystkie zachowania nawigacyjne (sprzętowe i interfejsowe) w jeden popstate
 document.getElementById("btn-qty-cancel").onclick = () => {
-    // Numpad to Overlay, nie ma własnej ścieżki (żeby nie psuć historii), więc obsługujemy go lokalnie 
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
+    
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
-    if(document.getElementById('scanner-box').style.display !== 'none' && hasEan) {
+    
+    if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
+        // powrót
+    } else {
         startScannerView(); 
     }
 };
@@ -667,7 +754,6 @@ document.getElementById("np-del").onclick = () => { let newVal = currentInputVal
 document.querySelectorAll('.btn-quick[data-add]').forEach(btn => { btn.onclick = () => { let newVal = parseInt(currentInputValue) + parseInt(btn.getAttribute('data-add')); if (newVal > targetItem.pozostalo) { flashDisplayError(); btn.classList.add('flash-error'); setTimeout(() => { btn.classList.remove('flash-error'); }, 300); } else { updateDisplay(newVal); } }; });
 document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
 
-// --- GŁÓWNA FUNKCJA WIDOKU (HISTORY API FIX) ---
 function showView(id, pushToHistory = true) {
     stopIdleTimer(); 
     const currentView = getCurrentViewId();
@@ -707,7 +793,6 @@ function showError(m, muteVoice = false) {
     setTimeout(() => { o.style.display = "none"; }, 2000);
 }
 
-// PRZYCISKI UI MAPUJĄCE NA STRZAŁKĘ WSTECZ (Hardware Back Button Parity)
 document.getElementById("btn-logout").onclick = () => { history.back(); };
 document.getElementById("btn-back-scan").onclick = () => { history.back(); };
 document.getElementById("btn-finish-icon").onclick = () => { history.back(); };
