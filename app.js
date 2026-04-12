@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw-tEHjsCLPHsRtqd-RJ7D85MhyMx7ntrhZcWGo7TL44gFEVxIyk7-O5t5bf_3YZIpY/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_f0oHIscnnmkMsWOfowbWl7AQ5GiuJgmBhgUAGJIIPXgs1-7q3-IWv35SpqAjxF_w/exec"; 
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -38,19 +38,12 @@ function stopIdleTimer() {
 }
 
 // --- STATUS SYSTEMU ---
-setInterval(() => {
-    const now = new Date();
-    document.getElementById('clock-display').innerText = now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-}, 1000);
-
 function updateNetworkStatus() {
     const netElem = document.getElementById('network-status');
     if (navigator.onLine) {
-        netElem.className = 'status-indicator net-online';
-        netElem.innerHTML = '<div class="status-dot"></div> ONLINE';
+        netElem.className = 'status-dot net-online';
     } else {
-        netElem.className = 'status-indicator net-offline';
-        netElem.innerHTML = '<div class="status-dot"></div> OFFLINE';
+        netElem.className = 'status-dot net-offline';
         showError("Brak połączenia z internetem!", true);
     }
 }
@@ -170,7 +163,6 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
 };
 
-// --- START APP & GENERATOR AWATARÓW (v6.0) ---
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
@@ -191,7 +183,7 @@ function getColor(name) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = Math.abs(hash % 360);
-    return `hsl(${hue}, 70%, 50%)`; 
+    return `hsl(${hue}, 75%, 55%)`; // Jaskrawy pastelowy
 }
 
 async function initApp() {
@@ -221,15 +213,24 @@ function renderUsers(users) {
         
         btn.style.backgroundColor = color; 
 
+        // Ikona Paczki z Checkmarkiem (z Twojej wizualizacji)
         btn.innerHTML = `
-            <div class="user-avatar-initials">${initials}</div>
+            <div class="user-tile-initials">${initials}</div>
             <div class="user-completed-block">
-                <div class="user-box-icon">📦✔️</div>
+                <div class="user-box-icon">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        <circle cx="18" cy="18" r="6" fill="#fff" stroke="none"></circle>
+                        <path d="M15.5 18l1.5 1.5 3-3" stroke="${color}" stroke-width="2.5"></path>
+                    </svg>
+                </div>
                 <div class="user-completed-qty">${u.completed}</div>
-                <div class="user-completed-label">ZAMÓWIENIE DZIŚ</div>
+                <div class="user-completed-label">ZAMÓWIEŃ DZIŚ</div>
             </div>
-            <div class="user-tile-progress-wrapper">
-                <div class="user-tile-progress-bar">
+            <div class="user-tile-progress-container">
+                <div class="user-tile-progress-track">
                     <div class="user-tile-progress-fill" style="width:${u.progress}%;"></div>
                     <div class="user-tile-progress-text">${u.progress}%</div>
                 </div>
@@ -355,6 +356,7 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
+// --- SKANER CZYSTY (KONTROLA Z ZEWNĄTRZ) ---
 function triggerScanVisual(type) {
     const sv = document.getElementById("scanner-box");
     if(sv) {
@@ -493,6 +495,7 @@ function openNumpadModal() {
     startIdleTimer('numpad');
 }
 
+// --- WYSYŁKA ---
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
@@ -500,7 +503,7 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
     if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // Powrót do karty
+        // powrót do karty
     } else {
         startScannerView(); 
     }
