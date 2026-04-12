@@ -8,6 +8,7 @@ const html5QrCode = new Html5Qrcode("reader");
 
 let audioCtx = null;
 let wakeLock = null;
+let cameraList = []; // Pamięć rozgrzanych kamer
 
 // --- ZAAWANSOWANE ZARZĄDZANIE TIMEREM BEZCZYNNOŚCI ---
 let idleTimer = null;
@@ -190,6 +191,18 @@ function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     document.getElementById("display-user-name").innerText = user;
     showView('view-orders-dashboard'); loadOrders();
+
+    // WARM-UP (ROZGRZEWANIE KAMERY)
+    // Pytamy o sprzęt już przy logowaniu, by wymusić ewentualne okienko uprawnień
+    // i zainicjować fizycznie połączenie z API kamery.
+    Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length) {
+            cameraList = devices;
+            console.log("Kamera rozgrzana i uprawnienia przyznane.");
+        }
+    }).catch(err => {
+        console.warn("Brak uprawnień kamery na starcie.", err);
+    });
 }
 
 async function loadOrders() {
@@ -289,7 +302,7 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-// --- SKANER Z ŻELAZNĄ BLOKADĄ W TRAKCIE BŁĘDU ---
+// --- SKANER (COLD START FIX - 100ms) ---
 function triggerScanVisual(type) {
     const sv = document.getElementById("scanner-box");
     if(sv) {
@@ -312,92 +325,76 @@ async function startScannerView() {
     document.getElementById("target-size-val").innerText = targetItem.rozmiar || "---";
     document.getElementById("btn-torch").classList.remove('active');
     torchOn = false; 
-    
-    const windowWidth = window.innerWidth;
-    const boxWidth = Math.min(windowWidth * 0.85, 380); 
-    const boxHeight = 150; 
-    
-    const sv = document.getElementById("scanner-visual");
-    if(sv) {
-        sv.style.width = boxWidth + "px";
-        sv.style.height = boxHeight + "px";
-        sv.classList.remove('scanner-ready'); 
-    }
 
-    const config = {
-        fps: 15, 
-        qrbox: { width: boxWidth, height: boxHeight },
-        formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_8 ],
-        disableFlip: false
-    };
+    // FIX: Dajemy przeglądarce 100ms na fizyczne "narysowanie" panelu skanera (display: block).
+    // Jeśli aparat wystartuje zanim okno przybierze rozmiar, stworzy płótno 0x0 pikseli i "oślepnie".
+    setTimeout(async () => {
+        startIdleTimer('scan'); 
 
-    try {
-        if (html5QrCode.isScanning) {
-            await html5QrCode.stop();
-            html5QrCode.clear(); 
-        }
+        const windowWidth = window.innerWidth;
+        const boxWidth = Math.min(windowWidth * 0.85, 380); 
+        const boxHeight = 150; 
         
-        let scanMatched = false; 
-        let errorCooldown = false; 
-        let isCameraWarm = false; 
-
-        await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-            // ŻELAZNA BLOKADA: Ignoruje kody, gdy aparat jest zimny, kod pasuje, lub widoczny jest komunikat błędu
-            if (scanMatched || !isCameraWarm || errorCooldown) return; 
-
-            if(text.trim() === String(targetItem.ean)) {
-                scanMatched = true;
-                stopIdleTimer(); 
-                
-                triggerScanVisual('success'); 
-                playSound('success');
-                
-                setTimeout(() => {
-                    if (html5QrCode.isScanning) {
-                        html5QrCode.stop().then(() => {
-                            if(targetItem.pozostalo > 1) { 
-                                openNumpadModal();
-                            } else { sendVal(1, "scan"); } 
-                        }).catch(e => console.error("Kamera stop error", e));
-                    }
-                }, 600); 
-                
-            } else { 
-                errorCooldown = true; // Załączamy blokadę!
-                stopIdleTimer(); 
-                
-                playSound('error');
-                triggerScanVisual('error');
-                showError("BŁĘDNY PRODUKT!", true); // true = bez głosu
-                
-                // Odblokowanie po dokładnie 2 sekundach (zgodnie z długością czerwonej planszy)
-                setTimeout(() => {
-                    errorCooldown = false;
-                    if (document.getElementById('scanner-box').style.display === 'block') {
-                        startIdleTimer('scan');
-                    }
-                }, 2000); 
-            }
-        });
-
-        // WYZWOLENIE OSTRZENIA (COLD-START FIX)
-        try {
-            if (html5QrCode.getState() === 2) { 
-                html5QrCode.pause(true); 
-                setTimeout(() => {
-                    html5QrCode.resume();
-                    isCameraWarm = true;
-                    if(sv) sv.classList.add('scanner-ready'); 
-                    startIdleTimer('scan');
-                }, 800);
-            } else {
-                setTimeout(() => { isCameraWarm = true; if(sv) sv.classList.add('scanner-ready'); startIdleTimer('scan'); }, 800);
-            }
-        } catch (err) {
-            setTimeout(() => { isCameraWarm = true; if(sv) sv.classList.add('scanner-ready'); startIdleTimer('scan'); }, 800);
+        const sv = document.getElementById("scanner-visual");
+        if(sv) {
+            sv.style.width = boxWidth + "px";
+            sv.style.height = boxHeight + "px";
         }
 
-    } catch(e) { showError("Błąd kamery. Odśwież stronę.", true); }
+        const config = {
+            fps: 15, 
+            qrbox: { width: boxWidth, height: boxHeight },
+            formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_8 ],
+            disableFlip: false
+        };
+
+        try {
+            if (html5QrCode.isScanning) {
+                await html5QrCode.stop();
+                html5QrCode.clear(); 
+            }
+            
+            let scanMatched = false; 
+            let errorCooldown = false; 
+
+            await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+                if (scanMatched || errorCooldown) return; // Hard Lock na wypadek błędu!
+
+                if(text.trim() === String(targetItem.ean)) {
+                    scanMatched = true;
+                    stopIdleTimer(); 
+                    
+                    triggerScanVisual('success'); 
+                    playSound('success');
+                    
+                    setTimeout(() => {
+                        if (html5QrCode.isScanning) {
+                            html5QrCode.stop().then(() => {
+                                if(targetItem.pozostalo > 1) { 
+                                    openNumpadModal();
+                                } else { sendVal(1, "scan"); } 
+                            }).catch(e => console.error("Kamera stop error", e));
+                        }
+                    }, 600); 
+                    
+                } else { 
+                    errorCooldown = true; 
+                    stopIdleTimer(); 
+                    
+                    playSound('error');
+                    triggerScanVisual('error');
+                    showError("BŁĘDNY PRODUKT!", true); // true = cicho
+                    
+                    setTimeout(() => {
+                        errorCooldown = false;
+                        if (document.getElementById('scanner-box').style.display === 'block') {
+                            startIdleTimer('scan');
+                        }
+                    }, 2000); 
+                }
+            });
+        } catch(e) { showError("Błąd kamery. Odśwież stronę.", true); }
+    }, 100); // 100ms pauzy na renderowanie
 }
 
 document.getElementById("btn-scan-item").onclick = () => {
@@ -525,7 +522,6 @@ function showError(m, muteVoice = false) {
     const o = document.getElementById("error-overlay");
     o.style.display = "flex";
     document.getElementById("error-text").innerText = m;
-    // ZMiana na 2000ms zgodnie ze wstrzymaniem skanera
     setTimeout(() => { o.style.display = "none"; }, 2000);
 }
 
