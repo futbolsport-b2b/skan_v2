@@ -163,7 +163,7 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
 };
 
-// --- START APP & GENERATOR AWATARÓW (v7.2 UX) ---
+// --- START APP & GENERATOR AWATARÓW ---
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
@@ -213,13 +213,9 @@ function renderUsers(users) {
         const colorComp = getColorComponents(u.name);
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         
-        // v7.2 - Wypełnienie ma lekko ciemniejszy/bardziej nasycony ton, aby był widoczny na białym tle, 
-        // ale stanowił jedną spójną gamę z kafelkiem.
-        const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 12)}%)`;
+        // Ciemniejszy ton dla wypełnienia (lepiej kontrastuje z białym napisem)
+        const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
         
-        // Logika wędrującego procentu
-        // Jeśli wartość 0%, tekst ląduje po prawej stronie wypełnienia (czyli na białym tle) i musi być w kolorze kafelka, by był widoczny.
-        // Gdy pasek przekroczy np. 15%, tekst wpada do środka, więc zmieniamy kolor na biały.
         const isLow = u.progress < 15;
         const textColor = isLow ? baseColor : "#ffffff";
         const textLeft = isLow ? `calc(${u.progress}% + 6px)` : `calc(${u.progress}% - 6px)`;
@@ -513,7 +509,6 @@ function openNumpadModal() {
     startIdleTimer('numpad');
 }
 
-// --- WYSYŁKA ---
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
@@ -521,7 +516,7 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
     if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // powrót
+        // powrót do karty
     } else {
         startScannerView(); 
     }
@@ -584,9 +579,12 @@ document.getElementById("np-del").onclick = () => { let newVal = currentInputVal
 document.querySelectorAll('.btn-quick[data-add]').forEach(btn => { btn.onclick = () => { let newVal = parseInt(currentInputValue) + parseInt(btn.getAttribute('data-add')); if (newVal > targetItem.pozostalo) { flashDisplayError(); btn.classList.add('flash-error'); setTimeout(() => { btn.classList.remove('flash-error'); }, 300); } else { updateDisplay(newVal); } }; });
 document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
 
+// KLUCZOWY FIX SCROLLA: Przywrócenie display: flex zamiast block!
 function showView(id) {
     stopIdleTimer(); 
-    ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => { document.getElementById(v).style.display = (v === id) ? 'block' : 'none'; });
+    ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => { 
+        document.getElementById(v).style.display = (v === id) ? 'flex' : 'none'; 
+    });
     const brandTitle = document.getElementById('brand-title');
     if (id === 'task-panel' || id === 'scanner-box') brandTitle.style.display = 'none'; else brandTitle.style.display = 'block';
 }
