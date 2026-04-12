@@ -112,9 +112,8 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 #target-kat-display { font-size: 22px; font-weight: 900; margin-top: 5px; display: flex; justify-content: center; align-items: center; gap: 10px; }
 #target-kat-val { color: var(--accent-blue); } #target-size-val { color: var(--error); }
 
-/* 2. Nasz elegancki, własny celownik (ukryty do czasu wyostrzenia aparatu) */
-#scanner-visual { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; pointer-events: none; width: 300px; height: 150px; opacity: 0; transition: opacity 0.4s ease; }
-#scanner-visual.scanner-ready { opacity: 1; }
+/* 2. Nasz elegancki, własny celownik */
+#scanner-visual { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; pointer-events: none; width: 300px; height: 150px; transition: all 0.3s; }
 
 .corner { position: absolute; width: 40px; height: 40px; border: 6px solid #fff; border-radius: 12px; transition: border-color 0.2s; }
 .corner.tl { top: -3px; left: -3px; border-right: 0; border-bottom: 0; } 
