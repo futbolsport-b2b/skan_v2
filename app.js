@@ -37,7 +37,6 @@ function stopIdleTimer() {
     }
 }
 
-// --- STATUS SYSTEMU ---
 function updateNetworkStatus() {
     const netElem = document.getElementById('network-status');
     if (navigator.onLine) {
@@ -176,29 +175,22 @@ function getInitials(name) {
     return name.substring(0, 2).toUpperCase();
 }
 
-// v7.4: Sztywna paleta pięknych, wysoce kontrastujących i odróżniających się od siebie kolorów
+// v7.5 - Sztywna, ręcznie dobrana paleta 12 mocno kontrastujących kolorów.
+// Pozwala to na przypisanie ich iteracyjnie, gwarantując brak podobieństw na ekranie.
 const DISTINCT_COLORS = [
-    { hue: 215, saturation: 90, lightness: 55 }, // Czysty Niebieski
-    { hue: 15,  saturation: 90, lightness: 55 }, // Intensywny Pomarańcz
-    { hue: 280, saturation: 70, lightness: 55 }, // Głęboki Fiolet
-    { hue: 140, saturation: 70, lightness: 45 }, // Czysty Zielony
-    { hue: 330, saturation: 85, lightness: 60 }, // Jasny Róż
-    { hue: 180, saturation: 90, lightness: 35 }, // Ciemny Morski
-    { hue: 350, saturation: 80, lightness: 55 }, // Karmazynowy
-    { hue: 240, saturation: 70, lightness: 65 }, // Indigo
-    { hue: 80,  saturation: 85, lightness: 45 }, // Limonkowy
-    { hue: 20,  saturation: 80, lightness: 45 }  // Rdzawy
+    { hue: 215, saturation: 90, lightness: 55 }, // 0: Niebieski
+    { hue: 20,  saturation: 90, lightness: 55 }, // 1: Pomarańczowy
+    { hue: 140, saturation: 70, lightness: 45 }, // 2: Zielony
+    { hue: 280, saturation: 70, lightness: 60 }, // 3: Fioletowy
+    { hue: 350, saturation: 85, lightness: 55 }, // 4: Karmazynowy
+    { hue: 180, saturation: 90, lightness: 35 }, // 5: Morski
+    { hue: 45,  saturation: 95, lightness: 45 }, // 6: Złoty/Żółty
+    { hue: 320, saturation: 85, lightness: 60 }, // 7: Różowy
+    { hue: 200, saturation: 90, lightness: 45 }, // 8: Jasnoniebieski
+    { hue: 80,  saturation: 85, lightness: 40 }, // 9: Limonkowy
+    { hue: 10,  saturation: 80, lightness: 45 }, // 10: Rdzawy
+    { hue: 250, saturation: 70, lightness: 65 }  // 11: Indigo
 ];
-
-function getColorComponents(name) {
-    if (!name) return DISTINCT_COLORS[0];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    // Wybieramy jeden ze zdefiniowanych, bezpiecznych kolorów na podstawie imienia
-    return DISTINCT_COLORS[Math.abs(hash) % DISTINCT_COLORS.length];
-}
 
 async function initApp() {
     stopIdleTimer();
@@ -218,15 +210,15 @@ function renderUsers(users) {
     const list = document.getElementById("user-list");
     list.innerHTML = "";
     
-    users.forEach(u => {
+    users.forEach((u, index) => {
         const btn = document.createElement("button");
         btn.className = "btn-user";
         
         const initials = getInitials(u.name);
-        const colorComp = getColorComponents(u.name);
-        const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         
-        // Pasek progresu delikatnie przyciemniony w stosunku do tła (daje super kontrast z białym tekstem)
+        // Rozdawanie sztywnych kolorów po kolei dla uniknięcia dubli (v7.5)
+        const colorComp = DISTINCT_COLORS[index % DISTINCT_COLORS.length];
+        const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
         
         const isLow = u.progress < 15;
@@ -529,7 +521,7 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
     if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // powrót do karty
+        // powrót
     } else {
         startScannerView(); 
     }
@@ -592,7 +584,6 @@ document.getElementById("np-del").onclick = () => { let newVal = currentInputVal
 document.querySelectorAll('.btn-quick[data-add]').forEach(btn => { btn.onclick = () => { let newVal = parseInt(currentInputValue) + parseInt(btn.getAttribute('data-add')); if (newVal > targetItem.pozostalo) { flashDisplayError(); btn.classList.add('flash-error'); setTimeout(() => { btn.classList.remove('flash-error'); }, 300); } else { updateDisplay(newVal); } }; });
 document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
 
-// KLUCZOWY FIX SCROLLA: Przywrócenie display: flex zamiast block!
 function showView(id) {
     stopIdleTimer(); 
     ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => { 
