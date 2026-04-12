@@ -7,9 +7,8 @@ let isManualUnlocked = sessionStorage.getItem('manualUnlock') === 'true';
 
 let isFirstScanPerOrder = true; 
 
-// --- DASHBOARD v8.0 STATE ---
 let globalOrders = []; 
-let activeDashboardTab = 'todo'; // 'todo' | 'done'
+let activeDashboardTab = 'todo'; 
 
 const html5QrCode = new Html5Qrcode("reader");
 
@@ -19,9 +18,7 @@ let wakeLock = null;
 let idleTimer = null;
 let currentIdleContext = null; 
 
-// ==========================================
-// HISTORY API
-// ==========================================
+// --- HISTORY API ---
 function getCurrentViewId() {
     const views = ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'];
     return views.find(v => document.getElementById(v).style.display === 'flex');
@@ -231,7 +228,6 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
 };
 
-
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
@@ -286,7 +282,6 @@ function renderUsers(users) {
         btn.className = "btn-user";
         
         const initials = getInitials(u.name);
-        
         const colorComp = DISTINCT_COLORS[index % DISTINCT_COLORS.length];
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
@@ -302,11 +297,10 @@ function renderUsers(users) {
             <div class="user-tile-top">
                 <div class="user-tile-initials">${initials}</div>
             </div>
-            
             <div class="user-tile-bottom">
                 <div class="user-completed-row">
                     <div class="user-box-icon">
-                        <svg width="26" height="26" viewBox="0 0 24 24">
+                        <svg width="28" height="28" viewBox="0 0 24 24">
                           <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
                           <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
                           <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
@@ -316,7 +310,6 @@ function renderUsers(users) {
                     </div>
                     <div class="user-completed-qty">${u.completed}</div>
                 </div>
-
                 <div class="user-tile-progress-container">
                     <div class="user-tile-progress-track">
                         <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillColor};"></div>
@@ -339,10 +332,9 @@ function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     document.getElementById("display-user-name").innerText = user;
     
-    // Reset Dashboard State
     activeDashboardTab = 'todo';
     document.getElementById('input-search-orders').value = '';
-    switchTab('todo'); // update UI buttons
+    switchTab('todo'); 
     
     showView('view-orders-dashboard'); 
     loadOrders();
@@ -351,10 +343,6 @@ function selectUser(user) {
         if (devices && devices.length) console.log("Kamera autoryzowana w tle");
     }).catch(err => {});
 }
-
-// =========================================================
-// DASHBOARD LOGIC (v8.0: Tabs, Search, Sorting)
-// =========================================================
 
 function switchTab(tab) {
     activeDashboardTab = tab;
@@ -380,7 +368,7 @@ async function loadOrders() {
             return;
         }
 
-        globalOrders = data.orders; // Cache orders globally
+        globalOrders = data.orders; 
         renderOrdersFromGlobal();
 
     } catch(e) { showError("Błąd wczytywania zamówień"); }
@@ -392,18 +380,15 @@ function renderOrdersFromGlobal() {
 
     const searchQuery = document.getElementById('input-search-orders').value.toLowerCase().trim();
 
-    // 1. Filtrowanie po Tabie
     let filtered = globalOrders.filter(o => {
         if (activeDashboardTab === 'todo') return o.status !== 'U';
         return o.status === 'U';
     });
 
-    // 2. Filtrowanie po wpisanym numerze (Live Search)
     if (searchQuery) {
         filtered = filtered.filter(o => String(o.id).toLowerCase().includes(searchQuery));
     }
 
-    // 3. Sortowanie: w zakładce "DO ZROBIENIA" priorytet 'W' idzie na górę
     if (activeDashboardTab === 'todo') {
         filtered.sort((a, b) => {
             if (a.status === 'W' && b.status !== 'W') return -1;
@@ -417,20 +402,19 @@ function renderOrdersFromGlobal() {
         return;
     }
 
-    // 4. Render HTML
+    // WERSJA 8.1 - Przeniesienie paska postępu do WNĘTRZA .order-details
     filtered.forEach(o => {
-        let fillBg = o.progress === 0 ? 'background: rgba(10, 132, 255, 0.15);' : (o.progress === 100 ? 'background: rgba(50, 215, 75, 0.25);' : `background: linear-gradient(90deg, hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 45%, 0.1), hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 40%, 0.4));`);
+        // Obliczamy gradient dla wewnętrznego paska. Ponieważ jest na ciemnym tle, dajemy mu mocniejsze kolory (opacity: 0.9)
+        let fillBg = o.progress === 0 ? 'background: rgba(10, 132, 255, 0.4);' : (o.progress === 100 ? 'background: rgba(50, 215, 75, 0.6);' : `background: linear-gradient(90deg, hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 40%, 0.6), hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 45%, 0.9));`);
         
         const isCompleted = o.status === 'U';
-        const isFastTrack = (o.remPositions === 1); // Odznaka błyskawicy
+        const isFastTrack = (o.remPositions === 1); 
         
         const baton = document.createElement("div");
         baton.className = `order-baton ${isCompleted ? 'order-completed' : ''}`;
         
         baton.innerHTML = `
-            <div class="order-progress-fill" style="width:${o.progress}%; ${fillBg}"></div>
             <div class="order-content">
-                
                 <div class="order-header">
                     <div class="order-id-group">
                         <span class="order-id">${o.id}</span>
@@ -440,6 +424,8 @@ function renderOrdersFromGlobal() {
                 </div>
 
                 <div class="order-details">
+                    <div class="order-details-progress-fill" style="width:${o.progress}%; ${fillBg}"></div>
+                    
                     <div class="order-workload">
                         <div class="order-box-icon">
                             <svg width="16" height="16" viewBox="0 0 24 24">
@@ -453,12 +439,10 @@ function renderOrdersFromGlobal() {
                     </div>
                     <div class="order-percent">${o.progress}%</div>
                 </div>
-
             </div>
         `;
         
         baton.onclick = () => {
-            // OCHRONA UX (Zablokowane wejście w zamknięte zamówienia)
             if (isCompleted) {
                 showError("ZAMÓWIENIE ZAKOŃCZONE", true);
                 return;
@@ -469,7 +453,6 @@ function renderOrdersFromGlobal() {
         container.appendChild(baton);
     });
 }
-
 
 function startOrder(id, itemsCount) {
     currentOrderID = id;
@@ -691,7 +674,7 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
     if(document.getElementById('scanner-box').style.display === 'none' || !hasEan) {
-        // powrót
+        // null
     } else {
         startScannerView(); 
     }
