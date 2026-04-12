@@ -248,7 +248,7 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręcznego wprowadzania Aktywny");
 };
 
-// PRZYCISK LIVE SYNC
+// PRZYCISK LIVE SYNC (v1.3 Fix)
 document.getElementById('btn-refresh-orders').onclick = async function() {
     this.classList.add('spin-anim');
     await loadOrders();
@@ -261,32 +261,34 @@ window.onload = () => {
     initApp();
 };
 
+// v1.4: Prawdziwie ciemna paleta męska
 const MALE_COLORS = [
-    { hue: 210, saturation: 90, lightness: 45 }, 
-    { hue: 350, saturation: 85, lightness: 45 }, 
-    { hue: 130, saturation: 75, lightness: 35 }, 
-    { hue: 280, saturation: 80, lightness: 50 }, 
-    { hue: 25,  saturation: 95, lightness: 45 }, 
-    { hue: 180, saturation: 85, lightness: 35 }, 
-    { hue: 240, saturation: 85, lightness: 55 }, 
-    { hue: 0,   saturation: 0,  lightness: 35 }  
+    { hue: 210, saturation: 80, lightness: 30 }, // Ciemny Granat
+    { hue: 350, saturation: 80, lightness: 30 }, // Ciemny Karmazynowy
+    { hue: 130, saturation: 60, lightness: 25 }, // Ciemna Butelkowa Zieleń
+    { hue: 280, saturation: 60, lightness: 35 }, // Ciemny Fiolet
+    { hue: 25,  saturation: 80, lightness: 35 }, // Ciemny Rdzawy/Brąz
+    { hue: 180, saturation: 80, lightness: 25 }, // Ciemny Morski
+    { hue: 240, saturation: 70, lightness: 40 }, // Ciemny Indigo
+    { hue: 0,   saturation: 0,  lightness: 25 }  // Ciemny Grafit
 ];
 
 const FEMALE_COLORS = [
-    { hue: 340, saturation: 70, lightness: 65 }, 
-    { hue: 290, saturation: 50, lightness: 65 }, 
-    { hue: 170, saturation: 50, lightness: 55 }, 
-    { hue: 20,  saturation: 80, lightness: 65 }, 
-    { hue: 200, saturation: 70, lightness: 65 }, 
-    { hue: 320, saturation: 60, lightness: 65 }  
+    { hue: 340, saturation: 70, lightness: 70 }, 
+    { hue: 290, saturation: 50, lightness: 70 }, 
+    { hue: 170, saturation: 50, lightness: 60 }, 
+    { hue: 20,  saturation: 80, lightness: 70 }, 
+    { hue: 200, saturation: 70, lightness: 70 }, 
+    { hue: 320, saturation: 60, lightness: 70 }  
 ];
 
 function getColorComponents(name) {
     if (!name) return MALE_COLORS[0];
     const cleanName = name.trim().toUpperCase();
 
+    // v1.4 FIX: Złoty dla Łukasza jest wymuszany przez CSS, ale tutaj zapobiegawczo przypisujemy wlaściwości
     if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
-        return { hue: 45, saturation: 100, lightness: 45 }; 
+        return { hue: 45, saturation: 100, lightness: 50 }; 
     }
 
     const firstName = cleanName.split(/\s+/)[0];
@@ -317,7 +319,6 @@ async function initApp() {
         
         if(data.status === "success") {
             
-            // 1. Zbuduj mapę stabilnych inicjałów (Zawsze ta sama kolejność do wyliczania dubli)
             let alphaUsers = [...data.users].sort((a, b) => String(a.name).localeCompare(String(b.name), 'pl'));
             let seenInitials = new Set();
             window.userInitialsMap = {};
@@ -330,7 +331,6 @@ async function initApp() {
                 if (parts.length >= 2) {
                     initial = `${parts[0][0].toUpperCase()}.${parts[1][0].toUpperCase()}.`;
                     if (seenInitials.has(initial) && parts[1].length >= 2) {
-                        // KOLIZJA! Dodajemy drugą literę nazwiska
                         initial = `${parts[0][0].toUpperCase()}.${parts[1].substring(0, 2).toUpperCase()}.`;
                     }
                 } else if (parts.length === 1) {
@@ -341,7 +341,6 @@ async function initApp() {
                 window.userInitialsMap[u.name] = initial;
             });
 
-            // 2. Posortuj po Top Performers do wyświetlenia
             data.users.sort((a, b) => {
                 if (b.completed !== a.completed) return b.completed - a.completed;
                 return String(a.name).localeCompare(String(b.name), 'pl'); 
@@ -362,7 +361,6 @@ function renderUsers(users) {
         const btn = document.createElement("button");
         btn.className = "btn-user";
         
-        // POBRANIE STABILNYCH INICJAŁÓW Z MAPY (Rozwiązanie Kolizji)
         const initials = window.userInitialsMap[u.name] || "??";
         
         const cleanName = String(u.name).trim().toUpperCase();
@@ -435,6 +433,7 @@ function selectUser(user) {
     
     if (isGold) {
         nameDisplay.classList.add("vip-gold-text");
+        nameDisplay.style.color = ""; // Usuń liniowy styl żeby zadziałał CSS !important
     } else {
         const colorComp = userColorsMap[user] || getColorComponents(user);
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
@@ -669,8 +668,13 @@ async function fetchNext(offset) {
             updateLockUI();
             setLoadingState(false);
         } else {
+            // v1.4 BUGFIX (Naprawa wiszącej belki na Dashboardzie)
             playSound('success'); speakVoice("Zamówienie kompletne!"); alert("ZAMÓWIENIE ZREALIZOWANE");
-            loadOrders(); showView('view-orders-dashboard'); setLoadingState(false);
+            document.getElementById("header-main-row").style.display = "none"; 
+            document.getElementById("global-progress-bar").style.display = "none";
+            loadOrders(); 
+            showView('view-orders-dashboard'); 
+            setLoadingState(false);
         }
     } catch(e) { setLoadingState(false); showError("Błąd wyświetlania danych"); }
 }
@@ -933,7 +937,11 @@ function showError(m, muteVoice = false) {
 
 document.getElementById("btn-logout").onclick = () => { history.back(); };
 document.getElementById("btn-back-scan").onclick = () => { history.back(); };
-document.getElementById("btn-finish-icon").onclick = () => { history.back(); };
+document.getElementById("btn-finish-icon").onclick = () => {
+    document.getElementById("header-main-row").style.display = "none"; 
+    document.getElementById("global-progress-bar").style.display = "none";
+    history.back(); 
+};
 
 document.getElementById("btn-prev").onclick = () => { if(!isProcessing) fetchNext(currentOffset - 1); };
 document.getElementById("btn-next").onclick = () => { if(!isProcessing) fetchNext(currentOffset + 1); };
