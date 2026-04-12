@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v7.2</title>
-    <link rel="stylesheet" href="style.css?v=7.2">
+    <title>B2B TERMINAL v7.3</title>
+    <link rel="stylesheet" href="style.css?v=7.3">
     <meta name="theme-color" content="#000000">
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
@@ -19,7 +19,7 @@
         
         <header id="main-header">
             <div class="header-title-bar">
-                <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI B2B v7.2</div>
+                <div id="brand-title" class="brand-title">SYSTEM KOMPLETACJI B2B v7.3</div>
                 <div id="network-status" class="status-dot net-online"></div>
             </div>
             
@@ -33,14 +33,14 @@
         </header>
 
         <main id="main-view">
-            <section id="view-user-selection">
+            <section id="view-user-selection" class="view-section" style="display: flex;">
                 <div class="main-logo-container">
                     <img src="logo.png" alt="Logo" id="main-logo">
                 </div>
                 <div id="user-list" class="user-grid"></div>
             </section>
 
-            <section id="view-orders-dashboard" style="display:none;">
+            <section id="view-orders-dashboard" class="view-section" style="display:none;">
                 <div class="dashboard-ctrl">
                     <button id="btn-logout" class="btn-icon-modern">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 5 12 10 7"></polyline><line x1="19" y1="12" x2="5" y2="12"></line></svg>
@@ -56,7 +56,7 @@
                 <div id="orders-list-container"></div>
             </section>
 
-            <section id="scanner-box" style="display:none;">
+            <section id="scanner-box" class="view-section" style="display:none;">
                 <button id="btn-back-scan" class="scan-ui-btn">
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 </button>
@@ -81,7 +81,7 @@
                 </div>
             </section>
 
-            <section id="task-panel" style="display:none;">
+            <section id="task-panel" class="view-section" style="display:none;">
                 <div class="task-card">
                     <div class="task-nav">
                         <button id="btn-prev" class="btn-circle">◀</button>
@@ -141,6 +141,6 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=7.2"></script>
+    <script src="app.js?v=7.3"></script>
 </body>
 </html>
