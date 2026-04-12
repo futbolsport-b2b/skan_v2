@@ -70,7 +70,6 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .task-action-row { flex-shrink: 0; display: flex; align-items: center; margin-top: 10px; width: 100%; gap: 12px; }
 .btn-primary { flex-grow: 1; height: 60px; border-radius: 20px; background: var(--accent-blue); border: none; color: #fff; font-size: 18px; font-weight: 800; transition: transform 0.2s; cursor: pointer; }
 .btn-primary:active:not(:disabled) { transform: scale(0.96); }
-/* Stan zablokowany dla głównego przycisku Skanera (Gdy brak kodu EAN) */
 .btn-primary:disabled { background: #2c2c2e; color: #8e8e93; opacity: 0.6; cursor: not-allowed; }
 
 .btn-manual-trigger { width: 60px; height: 60px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; display: flex; align-items: center; justify-content: center; transition: all 0.3s; flex-shrink: 0; cursor: pointer;}
@@ -99,7 +98,7 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 .loading-mode #loading-bar-wrapper { display: block; }
 @keyframes progressMove { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 
-/* SKANER */
+/* SKANER Z NOWYM CELOWNIKIEM */
 #scanner-box { position: relative; width: 100%; flex-grow: 1; background: #000; overflow: hidden; display: flex; flex-direction: column; }
 #reader { width: 100% !important; flex-grow: 1 !important; display: flex;} 
 #reader video { object-fit: cover !important; width: 100%; height: 100%; }
@@ -109,13 +108,22 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 #target-kat-display { font-size: 22px; font-weight: 900; margin-top: 5px; display: flex; justify-content: center; align-items: center; gap: 10px; }
 #target-kat-val { color: var(--accent-blue); } #target-size-val { color: var(--error); }
 
-#scanner-visual { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; pointer-events: none; width: 280px; height: 120px; transition: all 0.3s; }
+/* Kontener dopasowany rozmiarem w JS, trzyma nasze narożniki nad maską kamery */
+#scanner-visual { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; pointer-events: none; transition: all 0.3s; }
+.corner { position: absolute; width: 35px; height: 35px; border: 5px solid rgba(255,255,255,0.7); border-radius: 12px; transition: border-color 0.2s; }
+.corner.tl { top: -3px; left: -3px; border-right: 0; border-bottom: 0; } 
+.corner.tr { top: -3px; right: -3px; border-left: 0; border-bottom: 0; }
+.corner.bl { bottom: -3px; left: -3px; border-right: 0; border-top: 0; } 
+.corner.br { bottom: -3px; right: -3px; border-left: 0; border-top: 0; }
 #laser-line { position: absolute; top: 50%; left: 10px; right: 10px; height: 3px; background: var(--error); box-shadow: 0 0 12px var(--error); transition: background 0.2s, box-shadow 0.2s; }
 
 .scan-ui-btn { position: absolute; bottom: 30px; z-index: 200; background: rgba(28,28,30,0.8); border: 1px solid var(--border-subtle); border-radius: 50%; width: 60px; height: 60px; color: #fff; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); font-size: 26px; cursor: pointer; transition: all 0.2s; }
 #btn-back-scan { left: 20px; } #btn-torch { right: 20px; }
 #btn-torch.active { background: #fff; color: #000; box-shadow: 0 0 15px #fff; }
 
+/* Animacja sukcesu na narożnikach */
+#scanner-visual.scan-success .corner { border-color: var(--accent-green); }
+#scanner-visual.scan-error .corner { border-color: var(--error); }
 #scanner-visual.scan-success #laser-line { background: var(--accent-green); box-shadow: 0 0 15px var(--accent-green); }
 
 /* MODAL I NUMPAD */
