@@ -1,16 +1,14 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBlQV31K7UIX7mWsdLVp18rGCo7sa8xMQLdGt3DpP0K2zvuA-3fn6qyG6-TsVLp1I1/exec";
-const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxJ78_K_WaaWMT4C5X80gKOTKM4gipFlVVYJIoEE2_QPTVdtN7xxsvoaceRPcvMjzd/exec"; 
+const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
-let currentOffset = 0, currentInputValue = "0", isProcessing = false;
-let isManualUnlocked = sessionStorage.getItem('manualUnlock') === 'true';
+let currentOffset = 0, currentInputValue = "0", isProcessing = false; 
 const html5QrCode = new Html5Qrcode("reader");
 
 let audioCtx = null;
 let wakeLock = null;
 let scanIdleTimer = null; 
 
-// --- AUDIO & WAKELOCK ---
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -36,19 +34,22 @@ async function requestWakeLock() {
     try {
         if ('wakeLock' in navigator) {
             wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => { wakeLock = null; });
         }
     } catch (err) {}
 }
 document.addEventListener('visibilitychange', () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock();
+    if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
+requestWakeLock();
 
 function speakVoice(text) {
     if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'pl-PL';
-        window.speechSynthesis.speak(u);
+        window.speechSynthesis.cancel(); 
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'pl-PL';
+        utterance.rate = 1.1; 
+        window.speechSynthesis.speak(utterance);
     }
 }
 
@@ -77,17 +78,52 @@ function playSound(type) {
     }
 }
 
-// --- APP INIT ---
-window.onload = () => {
-    updateLockUI();
-    initApp();
-};
+function triggerScanVisual(type) {
+    const sv = document.getElementById("scanner-visual");
+    if(sv) {
+        sv.classList.remove('scan-success', 'scan-error');
+        void sv.offsetWidth; 
+        sv.classList.add(type === 'success' ? 'scan-success' : 'scan-error');
+        setTimeout(() => { sv.classList.remove('scan-success', 'scan-error'); }, 800); 
+    }
+}
+
+function flashDisplayError() {
+    playSound('error');
+    speakVoice("Niewłaściwa ilość"); 
+    const disp = document.getElementById("qty-input-display");
+    disp.classList.add("flash-error");
+    setTimeout(() => disp.classList.remove("flash-error"), 300);
+}
+
+function startIdleTimer() {
+    stopIdleTimer(); 
+    scanIdleTimer = setTimeout(() => {
+        speakVoice("Skanuj produkt");
+        startIdleTimer(); 
+    }, 5000);
+}
+
+function stopIdleTimer() {
+    if (scanIdleTimer) {
+        clearTimeout(scanIdleTimer);
+        scanIdleTimer = null;
+    }
+}
+
+window.onload = () => initApp();
 
 async function initApp() {
     stopIdleTimer();
     document.getElementById("image-zoom-overlay").style.display = "none";
     showView('view-user-selection');
-    document.getElementById("user-list").innerHTML = `<div class="loader-container"><div class="modern-spinner"></div><div class="loader-text-small">Autoryzacja...</div></div>`;
+    
+    document.getElementById("user-list").innerHTML = `
+        <div class="loader-container">
+            <div class="modern-spinner"></div>
+            <div class="loader-text-small">Autoryzacja...</div>
+        </div>
+    `;
     
     try {
         const resp = await fetch(`${SCRIPT_URL}?action=get_users`);
@@ -104,39 +140,27 @@ function renderUsers(users) {
         const btn = document.createElement("button");
         btn.className = "btn-user";
         btn.innerHTML = `<div class="user-avatar-icon">👤</div><span>${u}</span>`;
-        btn.onclick = () => { currentUser = u; requestWakeLock(); unlockAudioAPI(); showView('view-orders-dashboard'); loadOrders(); };
+        btn.onclick = () => selectUser(u);
         list.appendChild(btn);
     });
 }
 
-// --- KŁÓDKA ---
-document.getElementById('btn-manual-lock').onclick = function() {
-    isManualUnlocked = !isManualUnlocked;
-    sessionStorage.setItem('manualUnlock', isManualUnlocked);
-    updateLockUI();
-    if(isManualUnlocked) speakVoice("Tryb ręczny odblokowany");
-};
-
-function updateLockUI() {
-    const btn = document.getElementById('btn-manual-lock');
-    const icon = document.getElementById('lock-icon');
-    const manualBtn = document.getElementById('btn-manual-add');
-    
-    if(isManualUnlocked) {
-        btn.classList.add('unlocked');
-        icon.innerText = "🔓";
-        if(manualBtn) manualBtn.disabled = false;
-    } else {
-        btn.classList.remove('unlocked');
-        icon.innerText = "🔒";
-        if(manualBtn) manualBtn.disabled = true;
-    }
+function selectUser(user) {
+    currentUser = user;
+    unlockAudioAPI(); 
+    document.getElementById("display-user-name").innerText = user;
+    showView('view-orders-dashboard');
+    loadOrders();
 }
 
-// --- BAZA I ZAMÓWIENIA ---
 async function loadOrders() {
     const container = document.getElementById("orders-list-container");
-    container.innerHTML = `<div class="loader-container"><div class="modern-spinner"></div><div class="loader-text-small">Pobieranie zadań...</div></div>`;
+    container.innerHTML = `
+        <div class="loader-container">
+            <div class="modern-spinner"></div>
+            <div class="loader-text-small">Pobieranie zadań...</div>
+        </div>
+    `;
     try {
         const resp = await fetch(`${SCRIPT_URL}?action=get_orders_list&userName=${encodeURIComponent(currentUser)}`);
         const data = await resp.json();
@@ -148,14 +172,24 @@ async function loadOrders() {
         }
 
         data.orders.forEach(o => {
-            let fillBg = o.progress === 0 ? 'background: rgba(10, 132, 255, 0.15);' : (o.progress === 100 ? 'background: rgba(50, 215, 75, 0.25);' : `background: linear-gradient(90deg, hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 45%, 0.1), hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 40%, 0.4));`);
+            let fillBg;
+            if (o.progress === 0) fillBg = 'background: rgba(10, 132, 255, 0.15);';
+            else if (o.progress === 100) fillBg = 'background: rgba(50, 215, 75, 0.25);';
+            else {
+                const hue = 40 + Math.floor((o.progress / 100) * 70);
+                fillBg = `background: linear-gradient(90deg, hsla(${hue}, 100%, 45%, 0.1), hsla(${hue}, 100%, 40%, 0.4));`;
+            }
+
             const baton = document.createElement("div");
             baton.className = "order-baton";
             baton.innerHTML = `
                 <div class="order-progress-fill" style="width:${o.progress}%; ${fillBg}"></div>
                 <div class="order-content">
                     <div class="order-id">${o.id}</div>
-                    <div class="order-meta-group"><span class="order-percent">${o.progress}%</span><div class="status-badge status-${o.status}">${o.status}</div></div>
+                    <div class="order-meta-group">
+                        <span class="order-percent">${o.progress}%</span>
+                        <div class="status-badge status-${o.status}">${o.status}</div>
+                    </div>
                 </div>`;
             baton.onclick = () => startOrder(o.id, o.itemsCount);
             container.appendChild(baton);
@@ -163,12 +197,12 @@ async function loadOrders() {
     } catch(e) { showError("Błąd wczytywania zamówień"); }
 }
 
-function startOrder(id, count) {
+function startOrder(id, itemsCount) {
     currentOrderID = id;
     document.getElementById("header-main-row").style.display = "flex";
     document.getElementById("order-val").innerText = id;
     document.getElementById("global-progress-bar").style.display = "block";
-    speakVoice("Pozycji do uszykowania " + count);
+    speakVoice("Ilość pozycji do uszykowania " + itemsCount); 
     fetchNext(0);
 }
 
@@ -181,18 +215,22 @@ function setLoadingState(active) {
 async function fetchNext(offset) {
     stopIdleTimer();
     showView('task-panel');
-    updateLockUI();
     setLoadingState(true);
     try {
         const res = await fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&action=get_next&offset=${offset}`);
         const data = await res.json();
         
-        if(data.status === "error") { showError("SERWER: " + data.msg); setLoadingState(false); return; }
+        if(data.status === "error") {
+            showError("SERWER: " + data.msg);
+            setLoadingState(false);
+            return;
+        }
 
         if(data.status === "next_item") {
             targetItem = data.item;
             currentOffset = data.current_offset;
             document.getElementById("global-progress-fill").style.width = data.progress + "%";
+            
             document.getElementById("task-lp").innerText = targetItem.lp; 
             document.getElementById("task-name").innerText = targetItem.nazwa;
             document.getElementById("task-kat").innerText = targetItem.nr_kat; 
@@ -203,73 +241,107 @@ async function fetchNext(offset) {
             
             const notesRow = document.getElementById("task-notes-row");
             const uwagiStr = targetItem.uwagi ? String(targetItem.uwagi).trim() : "";
-            if (uwagiStr !== "") { document.getElementById("task-notes").innerText = uwagiStr; notesRow.style.display = "block"; qtyElem.style.color = "var(--error)"; } 
-            else { notesRow.style.display = "none"; qtyElem.style.color = "var(--accent-green)"; }
             
-            const imgBox = document.getElementById("product-image-box"), imgElem = document.getElementById("task-img");
+            if (uwagiStr !== "") { 
+                document.getElementById("task-notes").innerText = uwagiStr; 
+                notesRow.style.display = "block"; 
+                qtyElem.style.color = "var(--error)"; 
+            } else { 
+                notesRow.style.display = "none"; 
+                qtyElem.style.color = "var(--accent-green)";
+            }
+            
+            const imgBox = document.getElementById("product-image-box");
+            const imgElem = document.getElementById("task-img");
             imgElem.src = "";
+            
             if(targetItem.nr_kat && targetItem.nr_kat !== "---") {
+                let formattedKat = String(targetItem.nr_kat).trim().replace(/\s+/g, '_');
                 imgElem.onload = () => { imgBox.style.display = "flex"; };
                 imgElem.onerror = () => { imgBox.style.display = "none"; }; 
-                imgElem.src = IMAGE_BASE_URL + "1_" + String(targetItem.nr_kat).trim().replace(/\s+/g, '_') + ".jpg";
-            } else { imgBox.style.display = "none"; }
+                imgElem.src = IMAGE_BASE_URL + "1_" + formattedKat + ".jpg";
+            } else {
+                imgBox.style.display = "none";
+            }
             setLoadingState(false);
         } else {
-            playSound('success'); speakVoice("Zamówienie kompletne!"); alert("ZAMÓWIENIE ZREALIZOWANE");
-            loadOrders(); showView('view-orders-dashboard'); setLoadingState(false);
+            playSound('success');
+            speakVoice("Zamówienie kompletne!");
+            alert("ZAMÓWIENIE ZREALIZOWANE");
+            loadOrders();
+            showView('view-orders-dashboard');
+            setLoadingState(false);
         }
-    } catch(e) { setLoadingState(false); showError("Błąd wyświetlania danych"); }
-}
-
-// --- SKANER I TIMERY ---
-function startIdleTimer() {
-    stopIdleTimer(); 
-    scanIdleTimer = setTimeout(() => { speakVoice("Skanuj produkt"); startIdleTimer(); }, 5000);
-}
-function stopIdleTimer() { if (scanIdleTimer) { clearTimeout(scanIdleTimer); scanIdleTimer = null; } }
-
-function triggerScanVisual(type) {
-    const sv = document.getElementById("scanner-visual");
-    if(sv) {
-        sv.classList.remove('scan-success', 'scan-error');
-        void sv.offsetWidth; 
-        sv.classList.add(type === 'success' ? 'scan-success' : 'scan-error');
-        setTimeout(() => sv.classList.remove('scan-success', 'scan-error'), 800); 
+    } catch(e) {
+        setLoadingState(false);
+        showError("Błąd wyświetlania danych"); 
     }
 }
+
+let zoomTimeout = null;
+document.getElementById('task-img').onclick = function() {
+    const overlay = document.getElementById('image-zoom-overlay');
+    document.getElementById('zoomed-img').src = this.src;
+    overlay.style.display = 'flex';
+    void overlay.offsetWidth; 
+    overlay.style.opacity = '1';
+    clearTimeout(zoomTimeout);
+    zoomTimeout = setTimeout(closeZoom, 3000);
+};
+function closeZoom() {
+    const overlay = document.getElementById('image-zoom-overlay');
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.style.display = 'none', 300);
+}
+document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
 let torchOn = false;
 document.getElementById('btn-torch').onclick = async () => {
     torchOn = !torchOn;
-    try { await html5QrCode.applyVideoConstraints({ advanced: [{ torch: torchOn }] }); document.getElementById('btn-torch').classList.toggle('active', torchOn); } 
-    catch(e) { torchOn = false; alert("Latarka niedostępna"); }
+    try {
+        await html5QrCode.applyVideoConstraints({ advanced: [{ torch: torchOn }] });
+        document.getElementById('btn-torch').classList.toggle('active', torchOn);
+    } catch(e) { torchOn = false; alert("Latarka niedostępna"); }
 };
 
+// CZYSTY, NIEZMODYFIKOWANY SKANER Z WERSJI 4.2
 async function startScannerView() {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
     document.getElementById("target-size-val").innerText = targetItem.rozmiar || "---";
-    document.getElementById("btn-torch").classList.remove('active'); torchOn = false;
+    document.getElementById("btn-torch").classList.remove('active');
+    torchOn = false;
+
     startIdleTimer(); 
 
-    const formats = [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.EAN_8];
-    const config = { fps: 15, qrbox: { width: 300, height: 120 }, formatsToSupport: formats, aspectRatio: 1.777778, disableFlip: false };
-    const cameraConstraints = { facingMode: "environment", width: { ideal: 1280, min: 640 }, height: { ideal: 720, min: 480 }, advanced: [{ focusMode: "continuous" }] };
-
     try {
-        if (html5QrCode.isScanning) await html5QrCode.stop();
-        await html5QrCode.start(cameraConstraints, config, (text) => {
+        if (html5QrCode.isScanning) {
+            await html5QrCode.stop();
+        }
+        await html5QrCode.start({ facingMode: "environment" }, { fps: 25 }, (text) => {
+            
             stopIdleTimer(); 
+            
             if(text.trim() === String(targetItem.ean)) {
-                triggerScanVisual('success'); playSound('success');
+                triggerScanVisual('success');
+                playSound('success');
+                
                 if (html5QrCode.isScanning) {
                     html5QrCode.stop().then(() => {
-                        if(targetItem.pozostalo > 1) { openNumpad(); speakVoice(`Pobierz ${targetItem.pozostalo} sztuk`); } 
-                        else { sendVal(1, "scan"); }
-                    }).catch(e => console.error(e));
+                        if(targetItem.pozostalo > 1) { 
+                            currentInputValue = "0";
+                            document.getElementById("qty-input-display").innerText = "0";
+                            document.getElementById("qty-name").innerText = targetItem.nazwa;
+                            document.getElementById("qty-kat-val").innerHTML = "Nr Kat: " + targetItem.nr_kat;
+                            document.getElementById("qty-remain").innerText = targetItem.pozostalo;
+                            document.getElementById("qty-modal").style.display = "flex";
+                            speakVoice(`Pobierz ${targetItem.pozostalo} sztuk`);
+                        } else { sendVal(1); }
+                    }).catch(e => console.error("Kamera stop error", e));
                 }
             } else { 
-                triggerScanVisual('error'); showError("BŁĘDNY PRODUKT!"); 
+                triggerScanVisual('error');
+                showError("BŁĘDNY PRODUKT!"); 
                 setTimeout(() => startIdleTimer(), 2500);
             }
         });
@@ -277,73 +349,131 @@ async function startScannerView() {
 }
 
 document.getElementById("btn-scan-item").onclick = () => startScannerView();
-document.getElementById('btn-manual-add').onclick = () => { speakVoice("Wprowadzanie ręczne"); openNumpad(); };
 
-// --- WYSYŁKA ---
-function openNumpad() {
-    currentInputValue = "0";
-    document.getElementById("qty-input-display").innerText = "0";
-    document.getElementById("qty-name").innerText = targetItem.nazwa;
-    document.getElementById("qty-kat-val").innerText = "Nr Kat: " + targetItem.nr_kat;
-    document.getElementById("qty-remain").innerText = targetItem.pozostalo;
-    document.getElementById("qty-modal").style.display = "flex";
-}
+document.getElementById("btn-qty-cancel").onclick = () => {
+    document.getElementById("qty-modal").style.display = "none";
+    startScannerView(); 
+};
 
-function sendVal(q, mode) {
+function sendVal(q) {
     stopIdleTimer();
     const btnOk = document.getElementById("btn-qty-ok");
-    btnOk.classList.add("is-loading"); btnOk.disabled = true;
+    btnOk.classList.add("is-loading");
+    btnOk.disabled = true;
 
     let qInt = parseInt(q);
-    fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&qty=${qInt}&mode=${mode}&action=validate`)
+    fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&qty=${qInt}&action=validate`)
     .then(res => res.json())
     .then(data => {
-        btnOk.classList.remove("is-loading"); btnOk.disabled = false;
+        btnOk.classList.remove("is-loading");
+        btnOk.disabled = false;
+        
         if(data.status === "success") {
             document.getElementById("qty-modal").style.display = "none";
             if (qInt >= targetItem.pozostalo) speakVoice("Zatwierdzono pełne pobranie");
             else speakVoice(`Zatwierdzono ${qInt} sztuk`);
             fetchNext(currentOffset);
-        } else { showError(data.msg); }
+        } else {
+            showError(data.msg);
+        }
     })
-    .catch(() => { btnOk.classList.remove("is-loading"); btnOk.disabled = false; showError("Błąd zapisu danych!"); });
+    .catch(() => {
+        btnOk.classList.remove("is-loading");
+        btnOk.disabled = false;
+        showError("Błąd zapisu danych!");
+    });
 }
 
-function flashDisplayError() { playSound('error'); speakVoice("Niewłaściwa ilość"); const d = document.getElementById("qty-input-display"); d.classList.add("flash-error"); setTimeout(() => d.classList.remove("flash-error"), 300); }
+function showView(id) {
+    ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => {
+        document.getElementById(v).style.display = (v === id) ? 'block' : 'none';
+    });
+}
+
+function showError(m) {
+    playSound('error');
+    const msgUpper = m.toUpperCase();
+    if(msgUpper.includes("ILOŚĆ") || msgUpper.includes("PRZEKROCZONO")) {
+        speakVoice("Niewłaściwa ilość");
+    } else if (msgUpper.includes("PRODUKT")) {
+        speakVoice("Niewłaściwy produkt");
+    } else {
+        speakVoice("Błąd, sprawdź ekran");
+    }
+    
+    const o = document.getElementById("error-overlay");
+    o.style.display = "flex";
+    document.getElementById("error-text").innerText = m;
+    setTimeout(() => { o.style.display = "none"; }, 2500);
+}
+
+function updateDisplay(val) {
+    currentInputValue = String(val);
+    document.getElementById("qty-input-display").innerText = currentInputValue;
+}
 
 document.getElementById("btn-qty-ok").onclick = () => {
     let val = parseInt(currentInputValue);
-    if(val <= 0 || isNaN(val) || val > targetItem.pozostalo) { flashDisplayError(); return; }
-    const mode = document.getElementById('view-orders-dashboard').style.display === 'none' && !html5QrCode.isScanning ? "manual" : "scan";
-    sendVal(val, mode); 
+    if(val <= 0 || isNaN(val) || val > targetItem.pozostalo) {
+        flashDisplayError();
+        return;
+    }
+    sendVal(val); 
 };
 
-function updateDisplay(val) { currentInputValue = String(val); document.getElementById("qty-input-display").innerText = currentInputValue; }
-document.querySelectorAll('.np-btn[data-val]').forEach(b => { b.onclick = () => { let newVal = currentInputValue === "0" ? b.dataset.val : currentInputValue + b.dataset.val; if(parseInt(newVal) > targetItem.pozostalo) flashDisplayError(); else updateDisplay(newVal); }; });
+document.querySelectorAll('.np-btn[data-val]').forEach(b => {
+    b.onclick = () => {
+        let newVal = currentInputValue === "0" ? b.dataset.val : currentInputValue + b.dataset.val;
+        if(parseInt(newVal) > targetItem.pozostalo) flashDisplayError();
+        else updateDisplay(newVal);
+    };
+});
+
 document.getElementById("np-clear").onclick = () => updateDisplay("0");
-document.getElementById("np-del").onclick = () => { let newVal = currentInputValue.slice(0, -1); updateDisplay(newVal === "" ? "0" : newVal); };
-document.querySelectorAll('.btn-quick[data-add]').forEach(btn => { b = btn; b.onclick = () => { let newVal = parseInt(currentInputValue) + parseInt(b.getAttribute('data-add')); if (newVal > targetItem.pozostalo) { flashDisplayError(); b.classList.add('flash-error'); setTimeout(() => b.classList.remove('flash-error'), 300); } else updateDisplay(newVal); }; });
+document.getElementById("np-del").onclick = () => { 
+    let newVal = currentInputValue.slice(0, -1);
+    updateDisplay(newVal === "" ? "0" : newVal);
+};
+
+document.querySelectorAll('.btn-quick[data-add]').forEach(btn => {
+    btn.onclick = () => {
+        let newVal = parseInt(currentInputValue) + parseInt(btn.getAttribute('data-add'));
+        if (newVal > targetItem.pozostalo) {
+            flashDisplayError();
+            btn.classList.add('flash-error');
+            setTimeout(() => { btn.classList.remove('flash-error'); }, 300);
+        } else {
+            updateDisplay(newVal);
+        }
+    };
+});
+
 document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetItem.pozostalo);
-document.getElementById("btn-qty-cancel").onclick = () => { document.getElementById("qty-modal").style.display = "none"; startScannerView(); };
 
-// --- UI TOOLS ---
-function showView(id) { ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => { document.getElementById(v).style.display = (v === id) ? 'block' : 'none'; }); }
-function showError(m) {
-    playSound('error');
-    const u = m.toUpperCase();
-    if(u.includes("ILOŚĆ") || u.includes("PRZEKROCZONO")) speakVoice("Niewłaściwa ilość");
-    else if (u.includes("PRODUKT")) speakVoice("Niewłaściwy produkt");
-    else speakVoice("Błąd, sprawdź ekran");
-    const o = document.getElementById("error-overlay"); o.style.display = "flex"; document.getElementById("error-text").innerText = m; setTimeout(() => { o.style.display = "none"; }, 2500);
-}
+document.getElementById("btn-logout").onclick = () => {
+    stopIdleTimer();
+    document.getElementById("header-main-row").style.display = "none";
+    document.getElementById("global-progress-bar").style.display = "none";
+    initApp();
+};
 
-let zoomTimeout = null;
-document.getElementById('task-img').onclick = function() { const o = document.getElementById('image-zoom-overlay'); document.getElementById('zoomed-img').src = this.src; o.style.display = 'flex'; void o.offsetWidth; o.style.opacity = '1'; clearTimeout(zoomTimeout); zoomTimeout = setTimeout(closeZoom, 3000); };
-function closeZoom() { const o = document.getElementById('image-zoom-overlay'); o.style.opacity = '0'; setTimeout(() => o.style.display = 'none', 300); }
-document.getElementById('image-zoom-overlay').onclick = closeZoom;
+document.getElementById("btn-back-scan").onclick = () => { 
+    stopIdleTimer(); 
+    if (html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => showView('task-panel')).catch(() => showView('task-panel'));
+    } else {
+        showView('task-panel');
+    }
+};
 
-document.getElementById("btn-logout").onclick = () => { sessionStorage.removeItem('manualUnlock'); isManualUnlocked = false; updateLockUI(); stopIdleTimer(); document.getElementById("header-main-row").style.display = "none"; document.getElementById("global-progress-bar").style.display = "none"; initApp(); };
-document.getElementById("btn-back-scan").onclick = () => { stopIdleTimer(); if (html5QrCode.isScanning) { html5QrCode.stop().then(() => showView('task-panel')).catch(() => showView('task-panel')); } else showView('task-panel'); };
 document.getElementById("btn-prev").onclick = () => { if(!isProcessing) fetchNext(currentOffset - 1); };
 document.getElementById("btn-next").onclick = () => { if(!isProcessing) fetchNext(currentOffset + 1); };
-document.getElementById("btn-finish-icon").onclick = () => { stopIdleTimer(); if(confirm("Opuścić zamówienie?")) { document.getElementById("header-main-row").style.display = "none"; document.getElementById("global-progress-bar").style.display = "none"; loadOrders(); showView('view-orders-dashboard'); } };
+document.getElementById("btn-finish-icon").onclick = () => { 
+    stopIdleTimer();
+    if(confirm("Opuścić zamówienie?")) {
+        document.getElementById("header-main-row").style.display = "none";
+        document.getElementById("global-progress-bar").style.display = "none";
+        loadOrders();
+        showView('view-orders-dashboard');
+    }
+};
