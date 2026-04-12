@@ -7,7 +7,26 @@
 body { margin: 0; font-family: var(--font); background: var(--bg-dark); color: var(--text-primary); overflow: hidden; height: 100dvh; overscroll-behavior-y: none; }
 .app-container { height: 100dvh; display: flex; flex-direction: column; width: 100vw; }
 
-header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: rgba(28,28,30,0.9); border-bottom: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 12px; width: 100%; box-sizing: border-box; flex-shrink: 0; }
+/* ========================================================= */
+/* NOWOŚĆ v5.0: PASEK STATUSU SYSTEMU (Zegarek / Sieć)       */
+/* ========================================================= */
+#system-status-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: calc(env(safe-area-inset-top) + 5px) 20px 5px; 
+    background: #000; font-size: 11px; font-weight: 800; letter-spacing: 1px;
+    border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; z-index: 1000;
+}
+#clock-display { color: var(--text-primary); font-size: 13px;}
+.status-indicator { display: flex; align-items: center; gap: 6px; font-size: 11px;}
+.status-dot { width: 8px; height: 8px; border-radius: 50%; }
+.net-online { color: var(--accent-green); }
+.net-online .status-dot { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+.net-offline { color: var(--error); }
+.net-offline .status-dot { background: var(--error); box-shadow: 0 0 8px var(--error); animation: blink 1s infinite alternate;}
+@keyframes blink { from { opacity: 1; } to { opacity: 0.3; } }
+
+/* Header bez topowego paddingu, bo przejął go system-status-bar */
+header { padding: 10px 20px 15px; background: rgba(28,28,30,0.9); border-bottom: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 12px; width: 100%; box-sizing: border-box; flex-shrink: 0; }
 .brand-title { font-size: 12px; font-weight: 900; color: var(--text-secondary); letter-spacing: 1.5px; text-align: center; width: 100%; text-transform: uppercase; transition: all 0.3s;}
 .header-main-row { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 15px; }
 #order-val { font-size: 22px; font-weight: 900; color: var(--accent-green); flex-grow: 1; text-align: center; }
@@ -18,15 +37,29 @@ header { padding: calc(env(safe-area-inset-top) + 15px) 20px 15px; background: r
 
 #main-view { display: flex; flex-direction: column; flex-grow: 1; position: relative; overflow: hidden; }
 
-/* LOGO & KOMPAKTOWA SIATKA */
+/* LOGO & KOMPAKTOWA SIATKA AWATARÓW (v5.0) */
 .main-logo-container { width: 100%; display: flex; justify-content: center; align-items: center; padding: 25px 20px 20px; box-sizing: border-box; }
 #main-logo { width: 100%; max-width: 250px; max-height: 90px; height: auto; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); }
 
 .user-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 15px 15px; overflow-y: auto;}
-.btn-user { background: var(--panel-bg); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 20px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--text-primary); backdrop-filter: blur(20px); transition: transform 0.2s, background-color 0.2s; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+.btn-user { background: var(--panel-bg); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 15px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text-primary); backdrop-filter: blur(20px); transition: transform 0.2s, background-color 0.2s; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 .btn-user:active { transform: scale(0.94); background: rgba(255, 255, 255, 0.1); border-color: rgba(255,255,255,0.3); }
-.user-avatar-icon { width: 50px; height: 50px; background: rgba(255, 255, 255, 0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
-.btn-user span:last-child { font-size: 15px; font-weight: 800; text-align: center;}
+
+/* Nowe Avatary dla Inicjałów */
+.user-avatar-icon { 
+    width: 55px; height: 55px; 
+    border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+    font-size: 22px; font-weight: 900; 
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), 0 4px 10px rgba(0,0,0,0.3); 
+    text-shadow: 0 2px 3px rgba(0,0,0,0.5);
+}
+.btn-user span:nth-of-type(1) { font-size: 15px; font-weight: 800; text-align: center; line-height: 1.1;}
+
+/* Odznaka Ukończonych Zamówień */
+.user-badge-completed {
+    background: rgba(50, 215, 75, 0.15); color: var(--accent-green);
+    padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 800; border: 1px solid rgba(50,215,75,0.3);
+}
 
 .loader-container { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; gap: 15px; }
 .modern-spinner { width: 40px; height: 40px; border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; }
