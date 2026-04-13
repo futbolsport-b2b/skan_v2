@@ -699,7 +699,10 @@ document.getElementById('btn-torch').onclick = async () => {
     catch(e) { torchOn = false; alert("Latarka niedostępna"); }
 };
 
-async function startScannerView() {
+// ==========================================
+// PRZYWRÓCONA LOGIKA KAMERY Z WERSJI 1.5
+// ==========================================
+function startScannerView() {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
     document.getElementById("target-size-val").innerText = targetItem.rozmiar || "---";
@@ -724,70 +727,58 @@ async function startScannerView() {
         disableFlip: false
     };
 
-    // v1.6 FIX: Twarde zwolnienie kamery przed nowym startem (zapobiega czarnemu ekranowi)
-    if (html5QrCode.isScanning) {
-        try {
-            await html5QrCode.stop();
-            await html5QrCode.clear();
-        } catch (e) { console.warn("Błąd podczas zatrzymywania kamery", e); }
-    }
+    document.getElementById('scanner-loader').style.display = 'flex';
+    
+    let scanMatched = false; 
+    let errorCooldown = false; 
 
-    try {
-        document.getElementById('scanner-loader').style.display = 'flex';
-        
-        let scanMatched = false; 
-        let errorCooldown = false; 
+    html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+        if (scanMatched || errorCooldown) return; 
 
-        await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-            if (scanMatched || errorCooldown) return; 
-
-            if(text.trim() === String(targetItem.ean)) {
-                scanMatched = true;
-                stopIdleTimer(); 
-                
-                triggerScanVisual('success'); 
-                playSound('success');
-                
-                setTimeout(() => {
-                    if (html5QrCode.isScanning) {
-                        html5QrCode.stop().then(() => {
-                            if(targetItem.pozostalo > 1) { 
-                                openNumpadModal();
-                            } else { sendVal(1, "scan"); } 
-                        }).catch(e => console.error("Kamera stop error", e));
-                    }
-                }, 600); 
-                
-            } else { 
-                errorCooldown = true; 
-                stopIdleTimer(); 
-                
-                playSound('error');
-                triggerScanVisual('error');
-                showError("BŁĘDNY PRODUKT!", true); 
-                
-                setTimeout(() => {
-                    errorCooldown = false;
-                    if (document.getElementById('scanner-box').style.display !== 'none') {
-                        startIdleTimer('scan');
-                    }
-                }, 2000); 
-            }
-        });
-
-        setTimeout(() => {
-            document.getElementById('scanner-loader').style.display = 'none';
-            if(sv) sv.classList.add('scanner-ready');
-            startIdleTimer('scan');
-        }, isFirstScanPerOrder ? 1200 : 300);
-
-        isFirstScanPerOrder = false;
-
-    } catch(e) { 
+        if(text.trim() === String(targetItem.ean)) {
+            scanMatched = true;
+            stopIdleTimer(); 
+            
+            triggerScanVisual('success'); 
+            playSound('success');
+            
+            setTimeout(() => {
+                if (html5QrCode.isScanning) {
+                    html5QrCode.stop().then(() => {
+                        if(targetItem.pozostalo > 1) { 
+                            openNumpadModal();
+                        } else { sendVal(1, "scan"); } 
+                    }).catch(e => console.error("Kamera stop error", e));
+                }
+            }, 600); 
+            
+        } else { 
+            errorCooldown = true; 
+            stopIdleTimer(); 
+            
+            playSound('error');
+            triggerScanVisual('error');
+            showError("BŁĘDNY PRODUKT!", true); 
+            
+            setTimeout(() => {
+                errorCooldown = false;
+                if (document.getElementById('scanner-box').style.display !== 'none') {
+                    startIdleTimer('scan');
+                }
+            }, 2000); 
+        }
+    }).then(() => {
+        document.getElementById('scanner-loader').style.display = 'none';
+        if(sv) sv.classList.add('scanner-ready');
+        startIdleTimer('scan');
+    }).catch(err => {
         document.getElementById('scanner-loader').style.display = 'none';
         showError("Błąd kamery. Odśwież stronę.", true); 
-    }
+    });
+
+    isFirstScanPerOrder = false;
 }
+// ==========================================
 
 document.getElementById("btn-scan-item").onclick = () => {
     if (!isEanValid(targetItem ? targetItem.ean : null)) return; 
