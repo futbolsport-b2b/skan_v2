@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzL04PTWLIlLfWxJx1i0Dg-nBPQ_M9S8sb0uShPjblns89ies7w_77ZS6VTSvUsUXkn/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzL04PTWLIlLfWxJx1i0Dg-nBPQ_M9S8sb0uShPjblns89ies7w_77ZS6VTSvUsUXkn/exec";
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -19,11 +19,78 @@ let idleTimer = null;
 let currentIdleContext = null; 
 
 // ==========================================
-// OBSŁUGA SKANERA SPRZĘTOWEGO (UKRYTE POLE) v7.0
+// TWARDE WSPARCIE MOWY DLA ANDROIDA (v8.0)
+// ==========================================
+let globalUtterance = null; // Zapobiega niszczeniu obiektu przez Garbage Collector w Androidzie
+let availableVoices = [];
+
+// Ładowanie głosów systemowych (Android wymaga czasu na ich załadowanie)
+if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = () => {
+        availableVoices = window.speechSynthesis.getVoices();
+    };
+    // Próba wymuszenia od razu
+    availableVoices = window.speechSynthesis.getVoices();
+}
+
+function speakVoice(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Przerywa poprzednią mowę
+        
+        globalUtterance = new SpeechSynthesisUtterance(text);
+        globalUtterance.rate = 1.1;
+        globalUtterance.lang = 'pl-PL'; 
+
+        // Próba ręcznego znalezienia polskiego lektora w systemie Android
+        if (availableVoices.length === 0) {
+            availableVoices = window.speechSynthesis.getVoices();
+        }
+        
+        const plVoice = availableVoices.find(voice => 
+            voice.lang === 'pl-PL' || voice.lang === 'pl_PL' || voice.lang.includes('pl')
+        );
+
+        if (plVoice) {
+            globalUtterance.voice = plVoice;
+        }
+
+        // Opóźnienie 50ms często naprawia problem blokady w Chrome
+        setTimeout(() => {
+            window.speechSynthesis.speak(globalUtterance);
+        }, 50);
+    }
+}
+
+// Odblokowanie Audio i TTS po kliknięciu ekranu
+function unlockAudioAPI() {
+    if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const buffer = audioCtx.createBuffer(1, 1, 22050);
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioCtx.destination);
+    source.start(0);
+
+    // Twarde odblokowanie silnika TTS na Androidzie (wymuszona cicha spacja)
+    if ('speechSynthesis' in window) {
+        let u = new SpeechSynthesisUtterance(' '); 
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+    }
+}
+document.body.addEventListener('click', unlockAudioAPI, { once: true });
+document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
+// ==========================================
+
+
+// ==========================================
+// OBSŁUGA SKANERA SPRZĘTOWEGO (UKRYTE POLE)
 // ==========================================
 let scanTimeout = null;
 
-// Utrzymywanie aktywnego pola tekstowego by skaner miał gdzie "pisać"
 function maintainScannerFocus() {
     const hiddenInput = document.getElementById('hidden-scanner-input');
     if (!hiddenInput) return;
@@ -32,7 +99,6 @@ function maintainScannerFocus() {
     const qtyModalOpen = document.getElementById('qty-modal').style.display === 'flex';
     const searchModalOpen = document.getElementById('search-modal').style.display === 'flex';
 
-    // Wymuszaj focus TYLKO gdy pracownik jest w zadaniu i nie ma otwartych okienek
     if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !isProcessing) {
         hiddenInput.focus();
     } else {
@@ -40,38 +106,33 @@ function maintainScannerFocus() {
     }
 }
 
-// Inicjalizacja nasłuchu dla skanera (zostanie wywołana w window.onload)
 function initHardwareScanner() {
     const hiddenInput = document.getElementById('hidden-scanner-input');
     if (!hiddenInput) return;
 
-    // Przechwytywanie tekstu wklepanego przez skaner
     hiddenInput.addEventListener('input', (e) => {
         clearTimeout(scanTimeout);
-        // Skaner wklepuje kod w ułamku sekundy. Gdy skończy (100ms ciszy), analizujemy go.
         scanTimeout = setTimeout(() => {
             let code = hiddenInput.value.trim();
             if (code.length > 0) {
-                hiddenInput.value = ""; // Czyścimy pole
+                hiddenInput.value = ""; 
                 handleHardwareScan(code);
             }
         }, 100);
     });
 
-    // Zabezpieczenie: skanery często wysyłają klawisz Enter na koniec
     hiddenInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             clearTimeout(scanTimeout);
             let code = hiddenInput.value.trim();
             if (code.length > 0) {
-                hiddenInput.value = ""; // Czyścimy pole
+                hiddenInput.value = ""; 
                 handleHardwareScan(code);
             }
         }
     });
 
-    // Agresywne utrzymywanie focusu (jeśli użytkownik tapnie gdziekolwiek na ekranie, przywróć)
     document.addEventListener('click', maintainScannerFocus);
     window.addEventListener('focus', maintainScannerFocus);
 }
@@ -133,7 +194,7 @@ function getCurrentViewId() {
 window.addEventListener('popstate', (event) => {
     if (document.getElementById('search-modal').style.display === 'flex') {
         document.getElementById('search-modal').style.display = 'none';
-        maintainScannerFocus(); // v7.0
+        maintainScannerFocus(); 
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
@@ -141,7 +202,7 @@ window.addEventListener('popstate', (event) => {
     if (document.getElementById('qty-modal').style.display === 'flex') {
         document.getElementById('qty-modal').style.display = 'none';
         stopIdleTimer(); 
-        maintainScannerFocus(); // v7.0
+        maintainScannerFocus(); 
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
@@ -223,36 +284,6 @@ document.addEventListener('visibilitychange', () => {
     if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
 
-function unlockAudioAPI() {
-    if (!audioCtx) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtx = new AudioContext();
-    }
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const buffer = audioCtx.createBuffer(1, 1, 22050);
-    const source = audioCtx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioCtx.destination);
-    source.start(0);
-
-    if ('speechSynthesis' in window) {
-        let u = new SpeechSynthesisUtterance('');
-        u.volume = 0;
-        window.speechSynthesis.speak(u);
-    }
-}
-document.body.addEventListener('click', unlockAudioAPI, { once: true });
-document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
-
-function speakVoice(text) {
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); 
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'pl-PL';
-        utterance.rate = 1.1; 
-        window.speechSynthesis.speak(utterance);
-    }
-}
 
 function playSound(type) {
     if (!audioCtx) unlockAudioAPI();
@@ -334,7 +365,7 @@ document.getElementById('btn-refresh-orders').onclick = async function() {
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
-    initHardwareScanner(); // Start nasłuchu na ukryte pole v7.0
+    initHardwareScanner(); 
     initApp();
 };
 
@@ -364,14 +395,12 @@ function getColorComponents(name) {
 
     const firstName = cleanName.split(/\s+/)[0];
     const isFemale = firstName.endsWith('A') && firstName !== "KUBA" && firstName !== "BARNABA";
-
     const palette = isFemale ? FEMALE_COLORS : MALE_COLORS;
 
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    
     return palette[Math.abs(hash) % palette.length];
 }
 
@@ -554,7 +583,7 @@ document.getElementById('np-search-del').onclick = (e) => {
 
 document.getElementById('btn-search-cancel').onclick = () => {
     document.getElementById('search-modal').style.display = 'none';
-    maintainScannerFocus(); // v7.0 Wymuszamy przywrócenie focusu po zamknięciu szukajki
+    maintainScannerFocus(); 
 };
 
 document.getElementById('btn-search-ok').onclick = () => {
@@ -564,7 +593,7 @@ document.getElementById('btn-search-ok').onclick = () => {
     }
     document.getElementById('search-modal').style.display = 'none';
     renderOrdersFromGlobal();
-    maintainScannerFocus(); // v7.0
+    maintainScannerFocus(); 
 };
 
 async function loadOrders() {
@@ -686,7 +715,7 @@ function setLoadingState(active) {
     const card = document.querySelector('.task-card'); 
     if (active) { card.classList.add('loading-mode'); isProcessing = true; } 
     else { card.classList.remove('loading-mode'); isProcessing = false; } 
-    maintainScannerFocus(); // v7.0 Sprawdzenie focusu po animacji wczytywania
+    maintainScannerFocus(); 
 }
 
 async function fetchNext(offset) {
@@ -752,7 +781,7 @@ function closeZoom() {
     const overlay = document.getElementById('image-zoom-overlay');
     overlay.style.opacity = '0';
     setTimeout(() => overlay.style.display = 'none', 300);
-    maintainScannerFocus(); // v7.0
+    maintainScannerFocus(); 
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
@@ -777,7 +806,7 @@ function openNumpadModal() {
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
-    maintainScannerFocus(); // v7.0 Przywracamy nasłuch na laser po kliknięciu anuluj
+    maintainScannerFocus(); 
 };
 
 function sendVal(q, mode) {
@@ -819,7 +848,6 @@ document.getElementById("btn-qty-ok").onclick = () => {
         if (document.getElementById("qty-modal").style.display === "flex") startIdleTimer('numpad'); 
         return; 
     }
-    // Zawsze manual jeśli klikamy ok na klawiaturze ekranowej
     sendVal(val, "manual"); 
 };
 
@@ -856,7 +884,7 @@ function showView(id, pushToHistory = true) {
         history.pushState({ view: id }, "", "#" + id);
     }
     
-    maintainScannerFocus(); // v7.0 Upewnienie się że po zmianie widoku focus wraca tam gdzie trzeba
+    maintainScannerFocus(); 
 }
 
 function showError(m, muteVoice = false) {
