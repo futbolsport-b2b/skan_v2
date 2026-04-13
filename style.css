@@ -1,4 +1,4 @@
-/* v7.0c OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH IOS UI & NEON SCANNER */
+/* v7.0d OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH IOS UI & SUCCESS MODAL */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -224,3 +224,43 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
     height: 1px !important;
     pointer-events: none;
 }
+
+/* NOWOŚĆ: STYLE EKRANU SUKCESU */
+#order-complete-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+    z-index: 10000; display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.3s ease; pointer-events: none;
+}
+#order-complete-overlay.active {
+    opacity: 1; pointer-events: auto;
+}
+.success-modal { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.success-icon-wrapper {
+    width: 120px; height: 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: rgba(50, 215, 75, 0.1); box-shadow: 0 0 30px rgba(50, 215, 75, 0.3);
+}
+.success-svg { width: 80px; height: 80px; }
+.success-circle {
+    stroke: var(--accent-green); stroke-width: 3;
+    stroke-dasharray: 166; stroke-dashoffset: 166;
+}
+.success-check {
+    stroke: var(--accent-green); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 48; stroke-dashoffset: 48;
+}
+#order-complete-overlay.active .success-circle {
+    animation: draw-circle 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+#order-complete-overlay.active .success-check {
+    animation: draw-check 0.4s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
+}
+.success-text {
+    color: var(--accent-green); font-size: 22px; font-weight: 900; letter-spacing: 1px; text-align: center;
+    opacity: 0; transform: translateY(20px);
+}
+#order-complete-overlay.active .success-text {
+    animation: fade-up 0.5s ease 0.8s forwards;
+}
+@keyframes draw-circle { 100% { stroke-dashoffset: 0; } }
+@keyframes draw-check { 100% { stroke-dashoffset: 0; } }
+@keyframes fade-up { to { opacity: 1; transform: translateY(0); } }
