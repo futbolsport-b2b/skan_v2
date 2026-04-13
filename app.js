@@ -18,9 +18,6 @@ let wakeLock = null;
 let idleTimer = null;
 let currentIdleContext = null; 
 
-// ==========================================
-// OBSŁUGA SKANERA SPRZĘTOWEGO (UKRYTE POLE) v7.0a
-// ==========================================
 let scanTimeout = null;
 
 function maintainScannerFocus() {
@@ -116,7 +113,6 @@ function triggerTaskPanelVisual(type) {
         setTimeout(() => { card.classList.remove('scan-success', 'scan-error'); }, 800); 
     }
 }
-// ==========================================
 
 function getCurrentViewId() {
     const views = ['view-user-selection', 'view-orders-dashboard', 'task-panel'];
@@ -174,6 +170,26 @@ function exitToDashboard() {
     setLoadingState(false);
 }
 
+// NOWOŚĆ: Funkcja wyświetlająca graficzne potwierdzenie i wracająca do dashboardu
+function showOrderCompleteAnimation() {
+    stopIdleTimer();
+    const overlay = document.getElementById('order-complete-overlay');
+    overlay.style.display = 'flex';
+    
+    // Force reflow
+    void overlay.offsetWidth;
+    overlay.classList.add('active');
+    
+    // Auto-ukrycie i powrót po 2 sekundach
+    setTimeout(() => {
+        overlay.classList.remove('active');
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            exitToDashboard();
+        }, 300); // Czas na opacity transition
+    }, 2000);
+}
+
 function startIdleTimer(context) {
     stopIdleTimer(); 
     currentIdleContext = context;
@@ -192,7 +208,6 @@ function stopIdleTimer() {
     }
 }
 
-// BATERIA I SIEĆ (iOS Style) v7.0a
 function updateNetworkStatus() {
     const wifiIcon = document.getElementById('icon-wifi');
     if (navigator.onLine) {
@@ -306,7 +321,6 @@ function isEanValid(ean) {
     return true;
 }
 
-// Aktualizacja UI Skanera dla Neon Beam v7.0a
 function updateLockUI() {
     const btn = document.getElementById('btn-manual-lock');
     const iconClosed = document.getElementById('icon-lock-closed');
@@ -756,10 +770,10 @@ async function fetchNext(offset) {
             setTimeout(() => { startIdleTimer('scan'); }, 500);
 
         } else {
+            // ZAMIAST ALERTU() URUCHAMIAMY NOWĄ ANIMACJĘ
             playSound('success'); 
             speakVoice("Zamówienie kompletne!"); 
-            alert("ZAMÓWIENIE ZREALIZOWANE");
-            exitToDashboard();
+            showOrderCompleteAnimation();
         }
     } catch(e) { setLoadingState(false); showError("Błąd wyświetlania danych"); }
 }
