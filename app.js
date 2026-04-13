@@ -76,7 +76,7 @@ document.body.addEventListener('click', unlockAudioAPI, { once: true });
 document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
 
 // ==========================================
-// CZYSTY SKANER SPRZĘTOWY (Wedge)
+// CZYSTY SKANER SPRZĘTOWY (AGRESYWNY WEDGE) v12.0
 // ==========================================
 let scanTimeout = null;
 
@@ -120,6 +120,11 @@ function initHardwareScanner() {
                 handleHardwareScan(code);
             }
         }
+    });
+
+    // Agresywne zmuszanie Androida do trzymania focusu na polu!
+    hiddenInput.addEventListener('blur', () => {
+        setTimeout(maintainScannerFocus, 50);
     });
 
     document.addEventListener('click', maintainScannerFocus);
@@ -176,6 +181,7 @@ function triggerTaskPanelVisual(type) {
 // ==========================================
 
 function getCurrentViewId() {
+    // Usunięto 'scanner-box' z listy widoków - nie istnieje
     const views = ['view-user-selection', 'view-orders-dashboard', 'task-panel'];
     return views.find(v => document.getElementById(v).style.display === 'flex');
 }
@@ -426,75 +432,46 @@ function renderUsers(users) {
         btn.className = "btn-user";
         
         const initials = window.userInitialsMap[u.name] || "??";
-        const cleanName = String(u.name).trim().toUpperCase();
-        
-        const isVIPBlue = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
         
         const colorComp = getColorComponents(u.name);
         userColorsMap[u.name] = colorComp;
+        
+        const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
+        const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
+        
+        btn.style.backgroundColor = baseColor;
 
         const isLow = u.progress < 15;
         const textLeft = isLow ? `calc(${u.progress}% + 6px)` : `calc(${u.progress}% - 6px)`;
         const textTransform = isLow ? `translate(0, -50%)` : `translate(-100%, -50%)`;
-
-        let initialsColor, qtyColor, labelColor, textColor, progressTrackBg, progressFillBg, iconMain, iconSec, iconThird, iconCircle, iconStroke;
-
-        if (isVIPBlue) {
-            btn.classList.add("vip-blue"); 
-            initialsColor = "#FFFFFF";
-            qtyColor = "#FFFFFF";
-            labelColor = "#FFFFFF";
-            textColor = "#FFFFFF";
-            
-            iconMain = "rgba(255,255,255,0.95)";
-            iconSec = "rgba(255,255,255,0.7)";
-            iconThird = "rgba(255,255,255,0.4)";
-            iconCircle = "#FFFFFF";
-            iconStroke = "#2E7AF4"; 
-        } else {
-            const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
-            const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
-            btn.style.backgroundColor = baseColor;
-            
-            initialsColor = "#ffffff";
-            qtyColor = "#ffffff";
-            labelColor = "rgba(255,255,255,0.9)";
-            textColor = isLow ? baseColor : "#ffffff";
-            progressTrackBg = "#ffffff";
-            progressFillBg = progressFillColor;
-            iconMain = "rgba(255,255,255,0.9)";
-            iconSec = "rgba(255,255,255,0.6)";
-            iconThird = "rgba(255,255,255,0.3)";
-            iconCircle = "#ffffff";
-            iconStroke = baseColor;
-        }
+        const textColor = isLow ? baseColor : "#ffffff";
 
         btn.innerHTML = `
             <div class="user-tile-top">
-                <div class="user-tile-initials" style="color: ${initialsColor} !important;">${initials}</div>
+                <div class="user-tile-initials" style="color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${initials}</div>
             </div>
             
             <div class="user-tile-bottom">
                 <div class="user-completed-row">
                     <div class="user-box-icon">
                         <svg width="26" height="26" viewBox="0 0 24 24">
-                          <polygon points="12,3 3,8 12,13 21,8" fill="${iconMain}"/>
-                          <polygon points="3,9 3,18 12,23 12,14" fill="${iconSec}"/>
-                          <polygon points="21,9 21,18 12,23 12,14" fill="${iconThird}"/>
-                          <circle cx="18" cy="18" r="6" fill="${iconCircle}" />
-                          <path d="M15.5 18l1.5 1.5 3-3" stroke="${iconStroke}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                          <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
+                          <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
+                          <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
+                          <circle cx="18" cy="18" r="6" fill="#ffffff" />
+                          <path d="M15.5 18l1.5 1.5 3-3" stroke="${baseColor}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                     </div>
-                    <div class="user-completed-qty" style="color: ${qtyColor} !important;">${u.completed}</div>
+                    <div class="user-completed-qty" style="color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${u.completed}</div>
                 </div>
 
                 <div class="user-tile-progress-container">
-                    <div class="user-tile-progress-track" style="${!isVIPBlue ? `background: ${progressTrackBg}; border-color: #ffffff;` : ''}">
-                        <div class="user-tile-progress-fill" style="width:${u.progress}%; ${!isVIPBlue ? `background-color: ${progressFillBg};` : ''}"></div>
-                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor} !important;">${u.progress}%</div>
+                    <div class="user-tile-progress-track" style="background: #ffffff; border-color: #ffffff;">
+                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillColor};"></div>
+                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor}; text-shadow: none;">${u.progress}%</div>
                     </div>
                 </div>
-                <div class="user-completed-label" style="color: ${labelColor} !important;">ZREALIZOWANO DZIŚ</div>
+                <div class="user-completed-label" style="color: rgba(255,255,255,0.9); text-shadow: none;">ZREALIZOWANO DZIŚ</div>
             </div>
         `;
         
@@ -509,21 +486,16 @@ function renderUsers(users) {
 function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     
-    const cleanName = String(user).trim().toUpperCase();
-    const isVIPBlue = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
-    
     const nameDisplay = document.getElementById("display-user-name");
     nameDisplay.innerText = user;
     nameDisplay.className = ""; 
-    nameDisplay.style.color = ""; 
+    nameDisplay.style.background = "none";
+    nameDisplay.style.webkitTextFillColor = "initial";
+    nameDisplay.style.textShadow = "none";
     
-    if (isVIPBlue) {
-        nameDisplay.classList.add("vip-blue-text");
-    } else {
-        const colorComp = userColorsMap[user] || getColorComponents(user);
-        const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
-        nameDisplay.style.color = baseColor;
-    }
+    const colorComp = userColorsMap[user] || getColorComponents(user);
+    const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
+    nameDisplay.style.color = baseColor;
     
     activeDashboardTab = 'todo';
     activeSearchQuery = ""; 
@@ -846,7 +818,6 @@ document.getElementById("btn-qty-ok").onclick = () => {
         if (document.getElementById("qty-modal").style.display === "flex") startIdleTimer('numpad'); 
         return; 
     }
-    // Ponieważ klikamy w numpad na ekranie, mode to zawsze "manual"
     sendVal(val, "manual"); 
 };
 
@@ -867,6 +838,8 @@ document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetIte
 function showView(id, pushToHistory = true) {
     stopIdleTimer(); 
     const currentView = getCurrentViewId();
+    
+    // CZYSZCZENIE BŁĘDU: Usunięto kod odwołujący się do nieistniejącego html5QrCode
     
     ['view-user-selection', 'view-orders-dashboard', 'task-panel'].forEach(v => { 
         document.getElementById(v).style.display = (v === id) ? 'flex' : 'none'; 
