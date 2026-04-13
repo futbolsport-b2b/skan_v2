@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v8.0</title>
-    <link rel="stylesheet" href="style.css?v=8.0">
-    <link rel="manifest" href="manifest.json?v=8.0">
+    <title>B2B TERMINAL v9.0</title>
+    <link rel="stylesheet" href="style.css?v=9.0">
+    <link rel="manifest" href="manifest.json?v=9.0">
     <meta name="theme-color" content="#000000">
+    <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body class="ean-mode">
     <div id="error-overlay" style="display:none;"><div id="error-text">BŁĄD</div></div>
@@ -21,7 +22,7 @@
             <div class="header-title-bar" id="header-title-bar">
                 <img src="logo.png" alt="Logo" id="header-logo">
                 <div class="header-status-group">
-                    <span class="version-text">v8.0</span>
+                    <span class="version-text">v9.0</span>
                     <div class="network-status-indicator status-dot net-online"></div>
                 </div>
             </div>
@@ -81,6 +82,13 @@
             </section>
 
             <section id="task-panel" class="view-section" style="display:none;">
+                
+                <button id="floating-scan-btn" class="floating-scan-btn">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><line x1="7" y1="12" x2="17" y2="12" stroke="var(--error)" stroke-width="3"></line>
+                    </svg>
+                </button>
+
                 <div class="task-card" id="main-task-card">
                     <div class="task-nav">
                         <button id="btn-prev" class="btn-circle">◀</button>
@@ -114,6 +122,11 @@
                         <div id="loading-bar-wrapper"><div id="loading-bar-inner"></div></div>
                     </div>
                 </div>
+
+                <div id="hidden-camera-container" style="display:none; position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; pointer-events:none;">
+                    <div id="reader"></div>
+                </div>
+
             </section>
         </main>
 
@@ -167,6 +180,6 @@
         <input type="text" id="hidden-scanner-input" class="hidden-scanner" inputmode="none" autocomplete="off" />
 
     </div>
-    <script src="app.js?v=8.0"></script>
+    <script src="app.js?v=9.0"></script>
 </body>
 </html>
