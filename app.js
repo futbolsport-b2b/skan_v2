@@ -13,6 +13,7 @@ let activeDashboardTab = 'todo';
 let activeSearchQuery = "";
 let tempSearchQuery = "";
 
+// Mapa trzymająca kolory tylko dla zwykłych operatorów
 let userColorsMap = {}; 
 
 const html5QrCode = new Html5Qrcode("reader");
@@ -63,7 +64,6 @@ window.addEventListener('popstate', (event) => {
         return;
     }
 
-    // FIX v2.1: Brak pytań o potwierdzenie przy cofaniu z zamówienia
     if (currentView === 'task-panel' && targetView === 'view-orders-dashboard') {
         exitToDashboard();
         return;
@@ -250,6 +250,14 @@ window.onload = () => {
     initApp();
 };
 
+
+// --- NOWA, ODRĘBNA FUNKCJA GWARANTUJĄCA VIP BLUE ---
+function checkIsVipBlue(name) {
+    if (!name) return false;
+    const cleanName = String(name).trim().toUpperCase();
+    return (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
+}
+
 const MALE_COLORS = [
     { hue: 215, saturation: 85, lightness: 25 }, 
     { hue: 350, saturation: 80, lightness: 25 }, 
@@ -270,25 +278,19 @@ const FEMALE_COLORS = [
     { hue: 350, saturation: 75, lightness: 65 }  
 ];
 
+// Funkcja teraz obsługuje TYLKO zwykłych operatorów, VIP omija tę logikę.
 function getColorComponents(name) {
     if (!name) return MALE_COLORS[0];
-    const cleanName = name.trim().toUpperCase();
-
-    // Awaryjny kolor VIP Blue dla algorytmu pod maską
-    if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
-        return { hue: 220, saturation: 100, lightness: 30 }; 
-    }
+    const cleanName = String(name).trim().toUpperCase();
 
     const firstName = cleanName.split(/\s+/)[0];
     const isFemale = firstName.endsWith('A') && firstName !== "KUBA" && firstName !== "BARNABA";
-
     const palette = isFemale ? FEMALE_COLORS : MALE_COLORS;
 
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    
     return palette[Math.abs(hash) % palette.length];
 }
 
@@ -343,20 +345,16 @@ async function initApp() {
 function renderUsers(users) {
     const list = document.getElementById("user-list");
     list.innerHTML = "";
-    userColorsMap = {}; 
+    userColorsMap = {}; // Reset mapy
     
     users.forEach((u) => {
         const btn = document.createElement("button");
         btn.className = "btn-user";
         
         const initials = window.userInitialsMap[u.name] || "??";
-        const cleanName = String(u.name).trim().toUpperCase();
         
-        // Rozpoznanie VIP BLUE
-        const isVIPBlue = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
-        
-        const colorComp = getColorComponents(u.name);
-        userColorsMap[u.name] = colorComp;
+        // Sprawdzenie czy to Ł.C.
+        const isVIPBlue = checkIsVipBlue(u.name);
 
         const isLow = u.progress < 15;
         const textLeft = isLow ? `calc(${u.progress}% + 6px)` : `calc(${u.progress}% - 6px)`;
@@ -364,19 +362,30 @@ function renderUsers(users) {
 
         let initialsColor, qtyColor, labelColor, textColor, progressTrackBg, progressFillBg, iconMain, iconSec, iconThird, iconCircle, iconStroke;
 
+        // Jeśli to VIP - narzucamy twarde, bezpośrednie style INLINE, żeby zabić jakikolwiek stary Cache
         if (isVIPBlue) {
-            btn.classList.add("vip-blue"); 
+            btn.style.background = "linear-gradient(135deg, #091931 0%, #163E75 40%, #2059A8 70%, #2E7AF4 100%)";
+            btn.style.border = "2px solid #3A89FF";
+            btn.style.boxShadow = "0 8px 20px rgba(22, 62, 117, 0.6), inset 0 2px 10px rgba(115, 172, 255, 0.4)";
+            
             initialsColor = "#FFFFFF";
             qtyColor = "#FFFFFF";
             labelColor = "#FFFFFF";
             textColor = "#FFFFFF";
             
+            progressTrackBg = "rgba(0, 0, 0, 0.4)";
+            progressFillBg = "linear-gradient(90deg, #163E75 0%, #3A89FF 100%)";
+
             iconMain = "rgba(255,255,255,0.95)";
             iconSec = "rgba(255,255,255,0.7)";
             iconThird = "rgba(255,255,255,0.4)";
             iconCircle = "#FFFFFF";
             iconStroke = "#2E7AF4"; 
         } else {
+            // Zwykły operator - przydzielenie przez hashing
+            const colorComp = getColorComponents(u.name);
+            userColorsMap[u.name] = colorComp; // Zapis do mapy TYLKO dla zwykłych
+            
             const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
             const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
             btn.style.backgroundColor = baseColor;
@@ -396,7 +405,7 @@ function renderUsers(users) {
 
         btn.innerHTML = `
             <div class="user-tile-top">
-                <div class="user-tile-initials" style="color: ${initialsColor} !important;">${initials}</div>
+                <div class="user-tile-initials" style="color: ${initialsColor} !important; text-shadow: ${isVIPBlue ? '0 2px 5px rgba(0,0,0,0.8)' : '0 2px 4px rgba(0,0,0,0.3)'} !important;">${initials}</div>
             </div>
             
             <div class="user-tile-bottom">
@@ -410,16 +419,16 @@ function renderUsers(users) {
                           <path d="M15.5 18l1.5 1.5 3-3" stroke="${iconStroke}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                     </div>
-                    <div class="user-completed-qty" style="color: ${qtyColor} !important;">${u.completed}</div>
+                    <div class="user-completed-qty" style="color: ${qtyColor} !important; text-shadow: ${isVIPBlue ? '0 2px 5px rgba(0,0,0,0.8)' : '0 2px 4px rgba(0,0,0,0.3)'} !important;">${u.completed}</div>
                 </div>
 
                 <div class="user-tile-progress-container">
-                    <div class="user-tile-progress-track" style="${!isVIPBlue ? `background: ${progressTrackBg}; border-color: #ffffff;` : ''}">
-                        <div class="user-tile-progress-fill" style="width:${u.progress}%; ${!isVIPBlue ? `background-color: ${progressFillBg};` : ''}"></div>
-                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor} !important;">${u.progress}%</div>
+                    <div class="user-tile-progress-track" style="background: ${progressTrackBg}; border-color: ${isVIPBlue ? '#3A89FF' : '#ffffff'}; ${isVIPBlue ? 'box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);' : ''}">
+                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background: ${progressFillBg};"></div>
+                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor} !important; text-shadow: ${isVIPBlue ? '0 1px 2px rgba(0,0,0,0.8)' : 'none'} !important;">${u.progress}%</div>
                     </div>
                 </div>
-                <div class="user-completed-label" style="color: ${labelColor} !important;">ZREALIZOWANO DZIŚ</div>
+                <div class="user-completed-label" style="color: ${labelColor} !important; text-shadow: ${isVIPBlue ? '0 1px 2px rgba(0,0,0,0.8)' : 'none'} !important;">ZREALIZOWANO DZIŚ</div>
             </div>
         `;
         
@@ -434,17 +443,22 @@ function renderUsers(users) {
 function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     
-    const cleanName = String(user).trim().toUpperCase();
-    const isVIPBlue = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
+    const isVIPBlue = checkIsVipBlue(user);
     
     const nameDisplay = document.getElementById("display-user-name");
     nameDisplay.innerText = user;
-    nameDisplay.className = ""; 
     nameDisplay.style.color = ""; 
     
     if (isVIPBlue) {
-        nameDisplay.classList.add("vip-blue-text");
+        // Twardy gradient inline dla napisu na panelu
+        nameDisplay.style.background = "linear-gradient(135deg, #3A89FF 0%, #75ACFF 50%, #2059A8 100%)";
+        nameDisplay.style.webkitBackgroundClip = "text";
+        nameDisplay.style.webkitTextFillColor = "transparent";
+        nameDisplay.style.textShadow = "none";
     } else {
+        nameDisplay.style.background = "none";
+        nameDisplay.style.webkitTextFillColor = "initial";
+        
         const colorComp = userColorsMap[user] || getColorComponents(user);
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         nameDisplay.style.color = baseColor;
@@ -952,7 +966,6 @@ document.getElementById("btn-back-scan").onclick = () => {
     }
 };
 
-// FIX v2.1: Brak pytań o potwierdzenie przy kliknięciu przycisku Zakończ
 document.getElementById("btn-finish-icon").onclick = () => { 
     exitToDashboard();
 };
