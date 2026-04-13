@@ -277,8 +277,9 @@ function getColorComponents(name) {
     if (!name) return MALE_COLORS[0];
     const cleanName = name.trim().toUpperCase();
 
+    // Awaryjny kolor VIP Blue 
     if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
-        return { hue: 45, saturation: 100, lightness: 50 }; 
+        return { hue: 220, saturation: 100, lightness: 30 }; 
     }
 
     const firstName = cleanName.split(/\s+/)[0];
@@ -354,7 +355,8 @@ function renderUsers(users) {
         const initials = window.userInitialsMap[u.name] || "??";
         const cleanName = String(u.name).trim().toUpperCase();
         
-        const isGold = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
+        // Zmieniono flagę z isGold na isVIPBlue
+        const isVIPBlue = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
         
         const colorComp = getColorComponents(u.name);
         userColorsMap[u.name] = colorComp;
@@ -365,20 +367,21 @@ function renderUsers(users) {
 
         let initialsColor, qtyColor, labelColor, textColor, progressTrackBg, progressFillBg, iconMain, iconSec, iconThird, iconCircle, iconStroke;
 
-        if (isGold) {
-            btn.classList.add("vip-gold");
-            // Twarde nadpisanie inline - WYMUSZA kolor czarny niezależnie od CSS
-            initialsColor = "#000000";
-            qtyColor = "#000000";
-            labelColor = "#000000";
-            textColor = "#000000";
-            progressTrackBg = "rgba(0,0,0,0.15)";
-            progressFillBg = "#000000";
-            iconMain = "rgba(0,0,0,0.9)";
-            iconSec = "rgba(0,0,0,0.7)";
-            iconThird = "rgba(0,0,0,0.5)";
-            iconCircle = "#000000";
-            iconStroke = "#C5A059"; 
+        // Jeśli VIP Blue to pozwalamy, aby style.css zrobił całą magię, 
+        // ale awaryjnie wstrzykujemy biały tekst inline, żeby uniknąć czarnych napisów z poprzedniej wersji
+        if (isVIPBlue) {
+            btn.classList.add("vip-blue"); 
+            initialsColor = "#FFFFFF";
+            qtyColor = "#FFFFFF";
+            labelColor = "#FFFFFF";
+            textColor = "#FFFFFF";
+            
+            // Kolory dla SVG - by pasowały do reszty
+            iconMain = "rgba(255,255,255,0.95)";
+            iconSec = "rgba(255,255,255,0.7)";
+            iconThird = "rgba(255,255,255,0.4)";
+            iconCircle = "#FFFFFF";
+            iconStroke = "#2E7AF4"; 
         } else {
             const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
             const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
@@ -399,7 +402,7 @@ function renderUsers(users) {
 
         btn.innerHTML = `
             <div class="user-tile-top">
-                <div class="user-tile-initials" style="color: ${initialsColor} !important; text-shadow: ${isGold ? 'none' : '0 2px 4px rgba(0,0,0,0.3)'} !important;">${initials}</div>
+                <div class="user-tile-initials" style="color: ${initialsColor} !important;">${initials}</div>
             </div>
             
             <div class="user-tile-bottom">
@@ -413,12 +416,12 @@ function renderUsers(users) {
                           <path d="M15.5 18l1.5 1.5 3-3" stroke="${iconStroke}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                     </div>
-                    <div class="user-completed-qty" style="color: ${qtyColor} !important; text-shadow: ${isGold ? 'none' : '0 2px 4px rgba(0,0,0,0.3)'} !important;">${u.completed}</div>
+                    <div class="user-completed-qty" style="color: ${qtyColor} !important;">${u.completed}</div>
                 </div>
 
                 <div class="user-tile-progress-container">
-                    <div class="user-tile-progress-track" style="background: ${progressTrackBg}; border-color: ${isGold ? '#000000' : '#ffffff'};">
-                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillBg};"></div>
+                    <div class="user-tile-progress-track" style="${!isVIPBlue ? `background: ${progressTrackBg}; border-color: #ffffff;` : ''}">
+                        <div class="user-tile-progress-fill" style="width:${u.progress}%; ${!isVIPBlue ? `background-color: ${progressFillBg};` : ''}"></div>
                         <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor} !important;">${u.progress}%</div>
                     </div>
                 </div>
@@ -438,15 +441,15 @@ function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     
     const cleanName = String(user).trim().toUpperCase();
-    const isGold = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
+    const isVIPBlue = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
     
     const nameDisplay = document.getElementById("display-user-name");
     nameDisplay.innerText = user;
     nameDisplay.className = ""; 
     nameDisplay.style.color = ""; 
     
-    if (isGold) {
-        nameDisplay.classList.add("vip-gold-text");
+    if (isVIPBlue) {
+        nameDisplay.classList.add("vip-blue-text");
     } else {
         const colorComp = userColorsMap[user] || getColorComponents(user);
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
