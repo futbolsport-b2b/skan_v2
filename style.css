@@ -1,4 +1,4 @@
-/* v15.0 OPTIMIZED FOR TERMINAL MOBILE - ELEGANT WEDGE */
+/* v7.0 OPTIMIZED FOR HARDWARE SCANNER TERMINALS */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -112,9 +112,10 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .order-box-icon { opacity: 0.8; display: flex; }
 .order-percent { font-size: 16px; font-weight: 900; opacity: 0.9; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
 
-/* ELASTYCZNA KARTA PRODUKTU */
+/* ELASTYCZNA KARTA PRODUKTU (Wspiera podświetlanie od sprzętowego skanera) */
 .task-card { background: var(--panel-bg); border-radius: 24px; padding: 15px; border: 2px solid var(--border-subtle); margin: 10px; text-align: center; backdrop-filter: blur(10px); display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s;}
 
+/* Animacje sukcesu/błędu ze skanera fizycznego */
 .task-card.scan-success { border-color: var(--accent-green); box-shadow: 0 0 30px rgba(50, 215, 75, 0.4); }
 .task-card.scan-error { border-color: var(--error); box-shadow: 0 0 30px rgba(255, 69, 58, 0.5); animation: error-shake 0.4s; }
 
@@ -135,43 +136,8 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 
 .task-action-row { flex-shrink: 0; display: flex; align-items: center; margin-top: 10px; width: 100%; gap: 12px; }
 
-/* v15.0 PIKTOGRAM SKANERA - BIAŁY, ODDYCHAJĄCY, ELEGANCKI */
-.hardware-scan-prompt {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    height: 60px;
-    transition: opacity 0.3s, color 0.3s;
-}
-.hardware-scan-prompt.active {
-    color: #FFFFFF;
-    animation: gentle-breath 3s infinite ease-in-out;
-}
-.hardware-scan-prompt.error {
-    color: var(--error);
-    opacity: 1;
-}
-.hardware-scan-prompt svg.scan-icon-elegant {
-    width: 28px;
-    height: 28px;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-}
-.hardware-scan-prompt span {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    opacity: 0.9;
-}
-
-@keyframes gentle-breath {
-    0% { opacity: 0.4; transform: scale(0.98); }
-    50% { opacity: 1; transform: scale(1); }
-    100% { opacity: 0.4; transform: scale(0.98); }
-}
+/* Wskaźnik sprzętowego skanera */
+.hw-scan-indicator { flex-grow: 1; height: 60px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; }
 
 .btn-manual-trigger { width: 60px; height: 60px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; display: flex; align-items: center; justify-content: center; transition: all 0.3s; flex-shrink: 0; cursor: pointer;}
 .btn-manual-trigger:not(:disabled) { background: rgba(255, 214, 10, 0.15); color: var(--accent-yellow); border-color: var(--accent-yellow); box-shadow: 0 0 15px rgba(255, 214, 10, 0.2); }
@@ -196,7 +162,7 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .loading-mode #freeze-overlay { display: block; }
 #loading-bar-wrapper { display: none; width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 10px; }
 #loading-bar-inner { width: 35%; height: 100%; background: var(--accent-blue); border-radius: 4px; animation: progressMove 1.2s infinite ease-in-out; }
-.loading-mode .hardware-scan-prompt, .loading-mode .btn-manual-trigger { display: none; }
+.loading-mode .hw-scan-indicator, .loading-mode .btn-manual-trigger { display: none; }
 .loading-mode #loading-bar-wrapper { display: block; }
 @keyframes progressMove { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 
@@ -232,7 +198,7 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 #image-zoom-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
 #zoomed-img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 16px; }
 
-/* Niewidoczne pole dla Android Wedge (Kod v7.0 który działał) */
+/* Klasa dla ukrytego pola nasłuchu czytnika sprzętowego */
 .hidden-scanner {
     position: absolute !important;
     left: -9999px !important;
