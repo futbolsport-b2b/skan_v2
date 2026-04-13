@@ -23,7 +23,6 @@ let wakeLock = null;
 let idleTimer = null;
 let currentIdleContext = null; 
 
-// --- HISTORY API ---
 function getCurrentViewId() {
     const views = ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'];
     return views.find(v => document.getElementById(v).style.display === 'flex');
@@ -254,39 +253,50 @@ window.onload = () => {
     initApp();
 };
 
+/* ========================================================
+   NOWE, ZOPTYMALIZOWANE PALETY KOLORÓW DLA UŻYTKOWNIKÓW
+   ======================================================== */
+
+// Mężczyźni: Głębokie, ciemne, nasycone, matowe kolory (Lightness ok 20-35%)
 const MALE_COLORS = [
-    { hue: 210, saturation: 80, lightness: 30 }, 
-    { hue: 350, saturation: 80, lightness: 30 }, 
-    { hue: 130, saturation: 60, lightness: 25 }, 
-    { hue: 280, saturation: 60, lightness: 35 }, 
-    { hue: 25,  saturation: 80, lightness: 35 }, 
-    { hue: 180, saturation: 80, lightness: 25 }, 
-    { hue: 240, saturation: 70, lightness: 40 }, 
-    { hue: 0,   saturation: 0,  lightness: 25 }  
+    { hue: 215, saturation: 85, lightness: 25 }, // Głęboki Granat
+    { hue: 350, saturation: 80, lightness: 25 }, // Ciemny Karmazyn (Bordo)
+    { hue: 140, saturation: 75, lightness: 20 }, // Leśna Zieleń
+    { hue: 270, saturation: 65, lightness: 28 }, // Ciemny Bakłażan
+    { hue: 25,  saturation: 90, lightness: 30 }, // Rdzawy / Ciemny Pomarańcz
+    { hue: 185, saturation: 90, lightness: 20 }, // Ciemny Morski (Teal)
+    { hue: 230, saturation: 70, lightness: 35 }, // Przygaszony Indygo
+    { hue: 0,   saturation: 0,  lightness: 20 }  // Ciemny Grafit (Ash)
 ];
 
+// Kobiety: Pastelowe, jasne, łagodne kolory (Lightness ok 60-65% dla czytelności z białym tekstem)
 const FEMALE_COLORS = [
-    { hue: 340, saturation: 70, lightness: 65 }, 
-    { hue: 290, saturation: 50, lightness: 65 }, 
-    { hue: 170, saturation: 50, lightness: 55 }, 
-    { hue: 20,  saturation: 80, lightness: 65 }, 
-    { hue: 200, saturation: 70, lightness: 65 }, 
-    { hue: 320, saturation: 60, lightness: 65 }  
+    { hue: 340, saturation: 70, lightness: 60 }, // Pudrowy Róż
+    { hue: 280, saturation: 55, lightness: 60 }, // Lawenda
+    { hue: 15,  saturation: 80, lightness: 60 }, // Brzoskwinia
+    { hue: 170, saturation: 60, lightness: 50 }, // Świeża Mięta
+    { hue: 200, saturation: 75, lightness: 60 }, // Błękit Nieba
+    { hue: 350, saturation: 75, lightness: 65 }  // Delikatny Koral
 ];
 
 function getColorComponents(name) {
     if (!name) return MALE_COLORS[0];
     const cleanName = name.trim().toUpperCase();
 
+    // ZŁOTY WYJĄTEK - Właściwe stylowanie jest teraz całkowicie w CSS, 
+    // ale zachowujemy tu awaryjny kolor bazowy dla algorytmu pod maską.
     if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
         return { hue: 45, saturation: 100, lightness: 50 }; 
     }
 
+    // LOGIKA GENDER
     const firstName = cleanName.split(/\s+/)[0];
+    // Wyjątki dla polskich imion kończących się na "A", ale będących męskimi:
     const isFemale = firstName.endsWith('A') && firstName !== "KUBA" && firstName !== "BARNABA";
 
     const palette = isFemale ? FEMALE_COLORS : MALE_COLORS;
 
+    // STAŁY ALGORYTM HASZUJĄCY (Gwarantuje, że kolor dla imienia/nazwiska zawsze będzie ten sam)
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -354,11 +364,14 @@ function renderUsers(users) {
         
         const initials = window.userInitialsMap[u.name] || "??";
         const cleanName = String(u.name).trim().toUpperCase();
+        
+        // Wykrycie VIP'a do nałożenia klasy w CSS
         const isGold = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
         
         const colorComp = getColorComponents(u.name);
         userColorsMap[u.name] = colorComp;
 
+        // Jeśli to VIP, baza koloru i tak nadpisana jest przez gradient w klasie CSS
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
         
@@ -422,6 +435,7 @@ function selectUser(user) {
     nameDisplay.className = ""; 
     nameDisplay.style.color = ""; 
     
+    // Gradient dla imienia w panelu jeśli VIP
     if (isGold) {
         nameDisplay.classList.add("vip-gold-text");
     } else {
@@ -699,9 +713,6 @@ document.getElementById('btn-torch').onclick = async () => {
     catch(e) { torchOn = false; alert("Latarka niedostępna"); }
 };
 
-// ==========================================
-// PRZYWRÓCONA LOGIKA KAMERY Z WERSJI 1.5
-// ==========================================
 function startScannerView() {
     showView('scanner-box');
     document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
@@ -778,7 +789,6 @@ function startScannerView() {
 
     isFirstScanPerOrder = false;
 }
-// ==========================================
 
 document.getElementById("btn-scan-item").onclick = () => {
     if (!isEanValid(targetItem ? targetItem.ean : null)) return; 
