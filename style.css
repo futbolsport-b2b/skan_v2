@@ -1,4 +1,4 @@
-/* v7.0b OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH IOS UI & NEON SCANNER */
+/* v7.0c OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH IOS UI & NEON SCANNER */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -145,8 +145,8 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 
 .task-action-row { flex-shrink: 0; display: flex; align-items: center; margin-top: 10px; width: 100%; gap: 12px; }
 
-/* Wskaźnik Neon Beam Scanner (Zastępuje dawny hw-scan-indicator) */
-.neon-scanner-container { flex-grow: 1; height: 60px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2); display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px; }
+/* Wskaźnik Neon Beam Scanner (Płaski, informacyjny) */
+.neon-scanner-container { flex-grow: 1; height: 60px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px; background: transparent; border: none; }
 .neon-scanner-svg { width: 50px; height: 30px; }
 .scanner-frame { fill: none; stroke: var(--text-secondary); stroke-width: 3; opacity: 0.5; }
 .neon-beam { stroke: var(--accent-green); stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--accent-green)); animation: neon-breathe 2s ease-in-out infinite; }
