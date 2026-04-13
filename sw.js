@@ -1,16 +1,16 @@
-const CACHE_NAME = 'b2b-terminal-v5.0';
+const CACHE_NAME = 'b2b-terminal-v6.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
-  './logo.png',
-  'https://unpkg.com/html5-qrcode'
+  './logo.png'
+  // USUNIĘTO LINK DO HTML5-QRCODE!
 ];
 
 self.addEventListener('install', event => {
-  self.skipWaiting(); // Natychmiastowe zabicie starych plików
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -29,7 +29,7 @@ self.addEventListener('fetch', event => {
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(self.clients.claim()); // Natychmiastowe wymuszenie nowej wersji na otwartych kartach
+  event.waitUntil(self.clients.claim());
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
