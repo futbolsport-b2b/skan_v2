@@ -1,4 +1,4 @@
-/* v6.0 OPTIMIZED FOR HARDWARE SCANNER TERMINALS */
+/* v7.0 OPTIMIZED FOR HARDWARE SCANNER TERMINALS */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -136,7 +136,7 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 
 .task-action-row { flex-shrink: 0; display: flex; align-items: center; margin-top: 10px; width: 100%; gap: 12px; }
 
-/* Nowy element zastępujący przycisk SKANUJ */
+/* Wskaźnik sprzętowego skanera */
 .hw-scan-indicator { flex-grow: 1; height: 60px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; }
 
 .btn-manual-trigger { width: 60px; height: 60px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; display: flex; align-items: center; justify-content: center; transition: all 0.3s; flex-shrink: 0; cursor: pointer;}
@@ -197,3 +197,14 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 #error-overlay { position: fixed; inset: 0; background: rgba(255, 69, 58, 0.95); z-index: 9999; display: flex; justify-content: center; align-items: center; font-size: 26px; font-weight: 900; text-align: center; padding: 20px; flex-direction: column; }
 #image-zoom-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
 #zoomed-img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 16px; }
+
+/* Klasa dla ukrytego pola nasłuchu czytnika sprzętowego */
+.hidden-scanner {
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    opacity: 0 !important;
+    width: 1px !important;
+    height: 1px !important;
+    pointer-events: none;
+}
