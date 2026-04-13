@@ -13,7 +13,7 @@ let activeDashboardTab = 'todo';
 let activeSearchQuery = "";
 let tempSearchQuery = "";
 
-// Mapa trzymająca kolory tylko dla zwykłych operatorów
+// Mapa trzymająca kolory dla wszystkich operatorów
 let userColorsMap = {}; 
 
 const html5QrCode = new Html5Qrcode("reader");
@@ -250,14 +250,6 @@ window.onload = () => {
     initApp();
 };
 
-
-// --- NOWA, ODRĘBNA FUNKCJA GWARANTUJĄCA VIP BLUE ---
-function checkIsVipBlue(name) {
-    if (!name) return false;
-    const cleanName = String(name).trim().toUpperCase();
-    return (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
-}
-
 const MALE_COLORS = [
     { hue: 215, saturation: 85, lightness: 25 }, 
     { hue: 350, saturation: 80, lightness: 25 }, 
@@ -278,19 +270,21 @@ const FEMALE_COLORS = [
     { hue: 350, saturation: 75, lightness: 65 }  
 ];
 
-// Funkcja teraz obsługuje TYLKO zwykłych operatorów, VIP omija tę logikę.
+// 100% Czysty algorytm oparty tylko na płci (końcówka 'A' lub brak) i stałym hashowaniu znaków
 function getColorComponents(name) {
     if (!name) return MALE_COLORS[0];
     const cleanName = String(name).trim().toUpperCase();
 
     const firstName = cleanName.split(/\s+/)[0];
     const isFemale = firstName.endsWith('A') && firstName !== "KUBA" && firstName !== "BARNABA";
+
     const palette = isFemale ? FEMALE_COLORS : MALE_COLORS;
 
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
+    
     return palette[Math.abs(hash) % palette.length];
 }
 
@@ -353,59 +347,34 @@ function renderUsers(users) {
         
         const initials = window.userInitialsMap[u.name] || "??";
         
-        // Sprawdzenie czy to Ł.C.
-        const isVIPBlue = checkIsVipBlue(u.name);
+        // Każdy użytkownik korzysta teraz z tego samego, bazowego algorytmu
+        const colorComp = getColorComponents(u.name);
+        userColorsMap[u.name] = colorComp;
+        
+        const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
+        const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
+        
+        btn.style.backgroundColor = baseColor;
 
         const isLow = u.progress < 15;
         const textLeft = isLow ? `calc(${u.progress}% + 6px)` : `calc(${u.progress}% - 6px)`;
         const textTransform = isLow ? `translate(0, -50%)` : `translate(-100%, -50%)`;
 
-        let initialsColor, qtyColor, labelColor, textColor, progressTrackBg, progressFillBg, iconMain, iconSec, iconThird, iconCircle, iconStroke;
-
-        // Jeśli to VIP - narzucamy twarde, bezpośrednie style INLINE, żeby zabić jakikolwiek stary Cache
-        if (isVIPBlue) {
-            btn.style.background = "linear-gradient(135deg, #091931 0%, #163E75 40%, #2059A8 70%, #2E7AF4 100%)";
-            btn.style.border = "2px solid #3A89FF";
-            btn.style.boxShadow = "0 8px 20px rgba(22, 62, 117, 0.6), inset 0 2px 10px rgba(115, 172, 255, 0.4)";
-            
-            initialsColor = "#FFFFFF";
-            qtyColor = "#FFFFFF";
-            labelColor = "#FFFFFF";
-            textColor = "#FFFFFF";
-            
-            progressTrackBg = "rgba(0, 0, 0, 0.4)";
-            progressFillBg = "linear-gradient(90deg, #163E75 0%, #3A89FF 100%)";
-
-            iconMain = "rgba(255,255,255,0.95)";
-            iconSec = "rgba(255,255,255,0.7)";
-            iconThird = "rgba(255,255,255,0.4)";
-            iconCircle = "#FFFFFF";
-            iconStroke = "#2E7AF4"; 
-        } else {
-            // Zwykły operator - przydzielenie przez hashing
-            const colorComp = getColorComponents(u.name);
-            userColorsMap[u.name] = colorComp; // Zapis do mapy TYLKO dla zwykłych
-            
-            const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
-            const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
-            btn.style.backgroundColor = baseColor;
-            
-            initialsColor = "#ffffff";
-            qtyColor = "#ffffff";
-            labelColor = "rgba(255,255,255,0.9)";
-            textColor = isLow ? baseColor : "#ffffff";
-            progressTrackBg = "#ffffff";
-            progressFillBg = progressFillColor;
-            iconMain = "rgba(255,255,255,0.9)";
-            iconSec = "rgba(255,255,255,0.6)";
-            iconThird = "rgba(255,255,255,0.3)";
-            iconCircle = "#ffffff";
-            iconStroke = baseColor;
-        }
+        const initialsColor = "#ffffff";
+        const qtyColor = "#ffffff";
+        const labelColor = "rgba(255,255,255,0.9)";
+        const textColor = isLow ? baseColor : "#ffffff";
+        const progressTrackBg = "#ffffff";
+        const progressFillBg = progressFillColor;
+        const iconMain = "rgba(255,255,255,0.9)";
+        const iconSec = "rgba(255,255,255,0.6)";
+        const iconThird = "rgba(255,255,255,0.3)";
+        const iconCircle = "#ffffff";
+        const iconStroke = baseColor;
 
         btn.innerHTML = `
             <div class="user-tile-top">
-                <div class="user-tile-initials" style="color: ${initialsColor} !important; text-shadow: ${isVIPBlue ? '0 2px 5px rgba(0,0,0,0.8)' : '0 2px 4px rgba(0,0,0,0.3)'} !important;">${initials}</div>
+                <div class="user-tile-initials" style="color: ${initialsColor} !important; text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;">${initials}</div>
             </div>
             
             <div class="user-tile-bottom">
@@ -419,16 +388,16 @@ function renderUsers(users) {
                           <path d="M15.5 18l1.5 1.5 3-3" stroke="${iconStroke}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                     </div>
-                    <div class="user-completed-qty" style="color: ${qtyColor} !important; text-shadow: ${isVIPBlue ? '0 2px 5px rgba(0,0,0,0.8)' : '0 2px 4px rgba(0,0,0,0.3)'} !important;">${u.completed}</div>
+                    <div class="user-completed-qty" style="color: ${qtyColor} !important; text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;">${u.completed}</div>
                 </div>
 
                 <div class="user-tile-progress-container">
-                    <div class="user-tile-progress-track" style="background: ${progressTrackBg}; border-color: ${isVIPBlue ? '#3A89FF' : '#ffffff'}; ${isVIPBlue ? 'box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);' : ''}">
-                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background: ${progressFillBg};"></div>
-                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor} !important; text-shadow: ${isVIPBlue ? '0 1px 2px rgba(0,0,0,0.8)' : 'none'} !important;">${u.progress}%</div>
+                    <div class="user-tile-progress-track" style="background: ${progressTrackBg}; border-color: #ffffff;">
+                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillBg};"></div>
+                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor} !important; text-shadow: none !important;">${u.progress}%</div>
                     </div>
                 </div>
-                <div class="user-completed-label" style="color: ${labelColor} !important; text-shadow: ${isVIPBlue ? '0 1px 2px rgba(0,0,0,0.8)' : 'none'} !important;">ZREALIZOWANO DZIŚ</div>
+                <div class="user-completed-label" style="color: ${labelColor} !important; text-shadow: none !important;">ZREALIZOWANO DZIŚ</div>
             </div>
         `;
         
@@ -443,26 +412,17 @@ function renderUsers(users) {
 function selectUser(user) {
     currentUser = user; unlockAudioAPI(); 
     
-    const isVIPBlue = checkIsVipBlue(user);
-    
     const nameDisplay = document.getElementById("display-user-name");
     nameDisplay.innerText = user;
-    nameDisplay.style.color = ""; 
+    nameDisplay.className = ""; 
     
-    if (isVIPBlue) {
-        // Twardy gradient inline dla napisu na panelu
-        nameDisplay.style.background = "linear-gradient(135deg, #3A89FF 0%, #75ACFF 50%, #2059A8 100%)";
-        nameDisplay.style.webkitBackgroundClip = "text";
-        nameDisplay.style.webkitTextFillColor = "transparent";
-        nameDisplay.style.textShadow = "none";
-    } else {
-        nameDisplay.style.background = "none";
-        nameDisplay.style.webkitTextFillColor = "initial";
-        
-        const colorComp = userColorsMap[user] || getColorComponents(user);
-        const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
-        nameDisplay.style.color = baseColor;
-    }
+    nameDisplay.style.background = "none";
+    nameDisplay.style.webkitTextFillColor = "initial";
+    nameDisplay.style.textShadow = "none";
+    
+    const colorComp = userColorsMap[user] || getColorComponents(user);
+    const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
+    nameDisplay.style.color = baseColor;
     
     activeDashboardTab = 'todo';
     activeSearchQuery = ""; 
