@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v15.0</title>
-    <link rel="stylesheet" href="style.css?v=15.0">
-    <link rel="manifest" href="manifest.json?v=15.0">
+    <title>B2B TERMINAL v7.0</title>
+    <link rel="stylesheet" href="style.css?v=7.0">
     <meta name="theme-color" content="#000000">
 </head>
 <body class="ean-mode">
@@ -21,7 +20,7 @@
             <div class="header-title-bar" id="header-title-bar">
                 <img src="logo.png" alt="Logo" id="header-logo">
                 <div class="header-status-group">
-                    <span class="version-text">v15.0</span>
+                    <span class="version-text">v7.0</span>
                     <div class="network-status-indicator status-dot net-online"></div>
                 </div>
             </div>
@@ -104,7 +103,8 @@
                     </div>
                     
                     <div id="task-action-container" class="task-action-row">
-                        <div id="hw-scan-prompt" class="hardware-scan-prompt">
+                        <div id="hw-scan-indicator" class="hw-scan-indicator">
+                            <span style="color:var(--accent-green);">🟢 CZYTNIK AKTYWNY</span>
                         </div>
                         
                         <button id="btn-manual-add" class="btn-manual-trigger" disabled>
@@ -166,6 +166,6 @@
         <input type="text" id="hidden-scanner-input" class="hidden-scanner" inputmode="none" autocomplete="off" />
 
     </div>
-    <script src="app.js?v=15.0"></script>
+    <script src="app.js?v=7.0"></script>
 </body>
 </html>
