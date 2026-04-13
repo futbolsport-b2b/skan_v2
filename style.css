@@ -1,4 +1,4 @@
-/* v13.0 OPTIMIZED FOR HARDWARE SCANNER TERMINALS - ELEGANT UI */
+/* v15.0 OPTIMIZED FOR TERMINAL MOBILE - ELEGANT WEDGE */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -135,7 +135,7 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 
 .task-action-row { flex-shrink: 0; display: flex; align-items: center; margin-top: 10px; width: 100%; gap: 12px; }
 
-/* v14.0 ELEGANCKI, PULSUJĄCY PIKTOGRAM SKANERA */
+/* v15.0 PIKTOGRAM SKANERA - BIAŁY, ODDYCHAJĄCY, ELEGANCKI */
 .hardware-scan-prompt {
     flex-grow: 1;
     display: flex;
@@ -176,6 +176,7 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .btn-manual-trigger { width: 60px; height: 60px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; display: flex; align-items: center; justify-content: center; transition: all 0.3s; flex-shrink: 0; cursor: pointer;}
 .btn-manual-trigger:not(:disabled) { background: rgba(255, 214, 10, 0.15); color: var(--accent-yellow); border-color: var(--accent-yellow); box-shadow: 0 0 15px rgba(255, 214, 10, 0.2); }
 .btn-manual-trigger:disabled { opacity: 0.2; cursor: not-allowed; }
+
 .btn-manual-trigger.force-unlocked { background: rgba(255, 214, 10, 0.15) !important; color: var(--accent-yellow) !important; border-color: var(--accent-yellow) !important; box-shadow: 0 0 15px rgba(255, 214, 10, 0.2) !important; opacity: 1 !important; cursor: pointer !important; }
 
 #task-name { font-size: 19px; font-weight: 800; line-height: 1.3; margin-bottom: 15px; width: 100%; color: #fff; text-align: center; }
@@ -230,3 +231,14 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 #error-overlay { position: fixed; inset: 0; background: rgba(255, 69, 58, 0.95); z-index: 9999; display: flex; justify-content: center; align-items: center; font-size: 26px; font-weight: 900; text-align: center; padding: 20px; flex-direction: column; }
 #image-zoom-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
 #zoomed-img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 16px; }
+
+/* Niewidoczne pole dla Android Wedge (Kod v7.0 który działał) */
+.hidden-scanner {
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    opacity: 0 !important;
+    width: 1px !important;
+    height: 1px !important;
+    pointer-events: none;
+}
