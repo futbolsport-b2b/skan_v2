@@ -12,36 +12,33 @@ let activeSearchQuery = "";
 let tempSearchQuery = "";
 let userColorsMap = {}; 
 
+// Przywrócono obiekt kamery, ale działa w tle (Soft-Scan)
+const html5QrCode = new Html5Qrcode("reader");
+
 let audioCtx = null;
 let wakeLock = null;
 
 let idleTimer = null;
 let currentIdleContext = null; 
 
-// ==========================================
-// TWARDE WSPARCIE MOWY DLA ANDROIDA (v8.0)
-// ==========================================
-let globalUtterance = null; // Zapobiega niszczeniu obiektu przez Garbage Collector w Androidzie
+let globalUtterance = null; 
 let availableVoices = [];
 
-// Ładowanie głosów systemowych (Android wymaga czasu na ich załadowanie)
 if ('speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = () => {
         availableVoices = window.speechSynthesis.getVoices();
     };
-    // Próba wymuszenia od razu
     availableVoices = window.speechSynthesis.getVoices();
 }
 
 function speakVoice(text) {
     if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); // Przerywa poprzednią mowę
+        window.speechSynthesis.cancel(); 
         
         globalUtterance = new SpeechSynthesisUtterance(text);
         globalUtterance.rate = 1.1;
         globalUtterance.lang = 'pl-PL'; 
 
-        // Próba ręcznego znalezienia polskiego lektora w systemie Android
         if (availableVoices.length === 0) {
             availableVoices = window.speechSynthesis.getVoices();
         }
@@ -54,14 +51,12 @@ function speakVoice(text) {
             globalUtterance.voice = plVoice;
         }
 
-        // Opóźnienie 50ms często naprawia problem blokady w Chrome
         setTimeout(() => {
             window.speechSynthesis.speak(globalUtterance);
         }, 50);
     }
 }
 
-// Odblokowanie Audio i TTS po kliknięciu ekranu
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -74,7 +69,6 @@ function unlockAudioAPI() {
     source.connect(audioCtx.destination);
     source.start(0);
 
-    // Twarde odblokowanie silnika TTS na Androidzie (wymuszona cicha spacja)
     if ('speechSynthesis' in window) {
         let u = new SpeechSynthesisUtterance(' '); 
         u.volume = 0;
@@ -83,11 +77,10 @@ function unlockAudioAPI() {
 }
 document.body.addEventListener('click', unlockAudioAPI, { once: true });
 document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
-// ==========================================
 
 
 // ==========================================
-// OBSŁUGA SKANERA SPRZĘTOWEGO (UKRYTE POLE)
+// HYBRYDOWY SKANER (Sprzętowy + Ekranowy Soft-Scan w tle)
 // ==========================================
 let scanTimeout = null;
 
@@ -98,6 +91,9 @@ function maintainScannerFocus() {
     const currentView = getCurrentViewId();
     const qtyModalOpen = document.getElementById('qty-modal').style.display === 'flex';
     const searchModalOpen = document.getElementById('search-modal').style.display === 'flex';
+
+    // Jeśli aparat (Soft-Scan) działa w tle, nie kradnijmy mu focusu
+    if (html5QrCode.isScanning) return;
 
     if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !isProcessing) {
         hiddenInput.focus();
@@ -136,6 +132,48 @@ function initHardwareScanner() {
     document.addEventListener('click', maintainScannerFocus);
     window.addEventListener('focus', maintainScannerFocus);
 }
+
+// LOGIKA DLA PŁYWAJĄCEGO PRZYCISKU (Soft-Scan w tle)
+document.getElementById('floating-scan-btn').onclick = async (e) => {
+    e.stopPropagation();
+    const btn = document.getElementById('floating-scan-btn');
+    const card = document.getElementById("main-task-card");
+
+    if (html5QrCode.isScanning) {
+        // Jeśli skanuje to anuluj
+        await html5QrCode.stop();
+        btn.classList.remove('scanning');
+        card.classList.remove('scan-active');
+        maintainScannerFocus();
+        return;
+    }
+
+    if (!targetItem) return;
+
+    btn.classList.add('scanning');
+    card.classList.add('scan-active'); // Niebieska poświata
+    speakVoice("Skanowanie aktywne");
+
+    const config = {
+        fps: 15, 
+        qrbox: { width: 250, height: 250 },
+        formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_8 ]
+    };
+
+    html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+        // Znaleziono kod przez aparat
+        html5QrCode.stop().then(() => {
+            btn.classList.remove('scanning');
+            card.classList.remove('scan-active');
+            handleHardwareScan(text); // Przekazujemy kod do tej samej funkcji weryfikacji
+        });
+    }).catch(err => {
+        // Ignoruj błędy "nie znaleziono krawędzi", raportuj tylko grube błędy sprzętowe
+        if(!String(err).includes("NotFound")) {
+            console.error(err);
+        }
+    });
+};
 
 function handleHardwareScan(scannedCode) {
     const code = scannedCode.trim();
@@ -869,6 +907,15 @@ function showView(id, pushToHistory = true) {
     stopIdleTimer(); 
     const currentView = getCurrentViewId();
     
+    // Jeśli zamykamy panel zadania, zawsze ubijaj skaner tła
+    if (currentView === 'task-panel' && id !== 'task-panel') {
+        if (html5QrCode.isScanning) {
+            html5QrCode.stop().catch(()=>{});
+            document.getElementById('floating-scan-btn').classList.remove('scanning');
+            document.getElementById("main-task-card").classList.remove('scan-active');
+        }
+    }
+    
     ['view-user-selection', 'view-orders-dashboard', 'task-panel'].forEach(v => { 
         document.getElementById(v).style.display = (v === id) ? 'flex' : 'none'; 
     });
@@ -876,8 +923,10 @@ function showView(id, pushToHistory = true) {
     const titleBar = document.getElementById('header-title-bar');
     if (id === 'task-panel') {
         titleBar.style.display = 'none'; 
+        document.getElementById('floating-scan-btn').style.display = 'flex'; // Pokazuj przycisk na zadaniu
     } else {
         titleBar.style.display = 'flex'; 
+        document.getElementById('floating-scan-btn').style.display = 'none'; // Ukrywaj na liście zadań
     }
 
     if (pushToHistory && currentView !== id) {
