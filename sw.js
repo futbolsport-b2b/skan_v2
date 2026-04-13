@@ -1,4 +1,4 @@
-const CACHE_NAME = 'b2b-terminal-v4.0';
+const CACHE_NAME = 'b2b-terminal-v5.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -10,7 +10,7 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', event => {
-  self.skipWaiting();
+  self.skipWaiting(); // Natychmiastowe zabicie starych plików
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -29,7 +29,7 @@ self.addEventListener('fetch', event => {
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(self.clients.claim()); // Natychmiastowe wymuszenie nowej wersji na otwartych kartach
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
