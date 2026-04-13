@@ -13,7 +13,7 @@ let activeDashboardTab = 'todo';
 let activeSearchQuery = "";
 let tempSearchQuery = "";
 
-// Mapa trzymająca kolory dla wszystkich operatorów
+// Czysta mapa kolorów
 let userColorsMap = {}; 
 
 const html5QrCode = new Html5Qrcode("reader");
@@ -64,6 +64,7 @@ window.addEventListener('popstate', (event) => {
         return;
     }
 
+    // Usunięto denerwujące potwierdzenie przy powrocie
     if (currentView === 'task-panel' && targetView === 'view-orders-dashboard') {
         exitToDashboard();
         return;
@@ -250,36 +251,43 @@ window.onload = () => {
     initApp();
 };
 
+// =========================================
+// ZMODYFIKOWANA PALETA KOLORÓW (v5.0)
+// Usunięto z palety męskiej wszelkie odcienie brązu/pomarańczy/złota, 
+// aby algorytm nigdy więcej nie przydzielił ich przypadkowo.
+// =========================================
 const MALE_COLORS = [
-    { hue: 215, saturation: 85, lightness: 25 }, 
-    { hue: 350, saturation: 80, lightness: 25 }, 
-    { hue: 140, saturation: 75, lightness: 20 }, 
-    { hue: 270, saturation: 65, lightness: 28 }, 
-    { hue: 25,  saturation: 90, lightness: 30 }, 
-    { hue: 185, saturation: 90, lightness: 20 }, 
-    { hue: 230, saturation: 70, lightness: 35 }, 
-    { hue: 0,   saturation: 0,  lightness: 20 }  
+    { hue: 215, saturation: 85, lightness: 25 }, // Głęboki Granat
+    { hue: 350, saturation: 80, lightness: 25 }, // Ciemny Karmazyn (Bordo)
+    { hue: 140, saturation: 75, lightness: 20 }, // Leśna Zieleń
+    { hue: 270, saturation: 65, lightness: 28 }, // Ciemny Bakłażan
+    { hue: 195, saturation: 90, lightness: 22 }, // Ciemny Błękit / Morski (ZASTĘPUJE BRĄZ!)
+    { hue: 230, saturation: 70, lightness: 35 }, // Przygaszony Indygo
+    { hue: 0,   saturation: 0,  lightness: 20 }, // Grafit (Ciemno-szary)
+    { hue: 170, saturation: 80, lightness: 20 }  // Ciemny Szmaragd
 ];
 
 const FEMALE_COLORS = [
-    { hue: 340, saturation: 70, lightness: 60 }, 
-    { hue: 280, saturation: 55, lightness: 60 }, 
-    { hue: 15,  saturation: 80, lightness: 60 }, 
-    { hue: 170, saturation: 60, lightness: 50 }, 
-    { hue: 200, saturation: 75, lightness: 60 }, 
-    { hue: 350, saturation: 75, lightness: 65 }  
+    { hue: 340, saturation: 70, lightness: 60 }, // Pudrowy Róż
+    { hue: 280, saturation: 55, lightness: 60 }, // Lawenda
+    { hue: 15,  saturation: 80, lightness: 60 }, // Brzoskwinia
+    { hue: 170, saturation: 60, lightness: 50 }, // Świeża Mięta
+    { hue: 200, saturation: 75, lightness: 60 }, // Błękit Nieba
+    { hue: 350, saturation: 75, lightness: 65 }  // Delikatny Koral
 ];
 
-// 100% Czysty algorytm oparty tylko na płci (końcówka 'A' lub brak) i stałym hashowaniu znaków
+// Oczyszczony ze wszystkich wyjątków algorytm przydzielania kolorów
 function getColorComponents(name) {
     if (!name) return MALE_COLORS[0];
     const cleanName = String(name).trim().toUpperCase();
 
     const firstName = cleanName.split(/\s+/)[0];
+    // Sprawdzamy płeć (Wyjątek dla Kuby i Barnaby zostaje, bo to imiona męskie)
     const isFemale = firstName.endsWith('A') && firstName !== "KUBA" && firstName !== "BARNABA";
 
     const palette = isFemale ? FEMALE_COLORS : MALE_COLORS;
 
+    // Matematyczny algorytm stałego hashowania
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -339,7 +347,7 @@ async function initApp() {
 function renderUsers(users) {
     const list = document.getElementById("user-list");
     list.innerHTML = "";
-    userColorsMap = {}; // Reset mapy
+    userColorsMap = {}; 
     
     users.forEach((u) => {
         const btn = document.createElement("button");
@@ -347,7 +355,7 @@ function renderUsers(users) {
         
         const initials = window.userInitialsMap[u.name] || "??";
         
-        // Każdy użytkownik korzysta teraz z tego samego, bazowego algorytmu
+        // POBIERANIE KOLORU W 100% CZYSTO I RÓWNO DLA KAŻDEGO
         const colorComp = getColorComponents(u.name);
         userColorsMap[u.name] = colorComp;
         
@@ -359,45 +367,34 @@ function renderUsers(users) {
         const isLow = u.progress < 15;
         const textLeft = isLow ? `calc(${u.progress}% + 6px)` : `calc(${u.progress}% - 6px)`;
         const textTransform = isLow ? `translate(0, -50%)` : `translate(-100%, -50%)`;
-
-        const initialsColor = "#ffffff";
-        const qtyColor = "#ffffff";
-        const labelColor = "rgba(255,255,255,0.9)";
         const textColor = isLow ? baseColor : "#ffffff";
-        const progressTrackBg = "#ffffff";
-        const progressFillBg = progressFillColor;
-        const iconMain = "rgba(255,255,255,0.9)";
-        const iconSec = "rgba(255,255,255,0.6)";
-        const iconThird = "rgba(255,255,255,0.3)";
-        const iconCircle = "#ffffff";
-        const iconStroke = baseColor;
 
         btn.innerHTML = `
             <div class="user-tile-top">
-                <div class="user-tile-initials" style="color: ${initialsColor} !important; text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;">${initials}</div>
+                <div class="user-tile-initials" style="color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${initials}</div>
             </div>
             
             <div class="user-tile-bottom">
                 <div class="user-completed-row">
                     <div class="user-box-icon">
                         <svg width="26" height="26" viewBox="0 0 24 24">
-                          <polygon points="12,3 3,8 12,13 21,8" fill="${iconMain}"/>
-                          <polygon points="3,9 3,18 12,23 12,14" fill="${iconSec}"/>
-                          <polygon points="21,9 21,18 12,23 12,14" fill="${iconThird}"/>
-                          <circle cx="18" cy="18" r="6" fill="${iconCircle}" />
-                          <path d="M15.5 18l1.5 1.5 3-3" stroke="${iconStroke}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                          <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
+                          <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
+                          <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
+                          <circle cx="18" cy="18" r="6" fill="#ffffff" />
+                          <path d="M15.5 18l1.5 1.5 3-3" stroke="${baseColor}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                     </div>
-                    <div class="user-completed-qty" style="color: ${qtyColor} !important; text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;">${u.completed}</div>
+                    <div class="user-completed-qty" style="color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${u.completed}</div>
                 </div>
 
                 <div class="user-tile-progress-container">
-                    <div class="user-tile-progress-track" style="background: ${progressTrackBg}; border-color: #ffffff;">
-                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillBg};"></div>
-                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor} !important; text-shadow: none !important;">${u.progress}%</div>
+                    <div class="user-tile-progress-track" style="background: #ffffff; border-color: #ffffff;">
+                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillColor};"></div>
+                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor}; text-shadow: none;">${u.progress}%</div>
                     </div>
                 </div>
-                <div class="user-completed-label" style="color: ${labelColor} !important; text-shadow: none !important;">ZREALIZOWANO DZIŚ</div>
+                <div class="user-completed-label" style="color: rgba(255,255,255,0.9); text-shadow: none;">ZREALIZOWANO DZIŚ</div>
             </div>
         `;
         
@@ -415,7 +412,6 @@ function selectUser(user) {
     const nameDisplay = document.getElementById("display-user-name");
     nameDisplay.innerText = user;
     nameDisplay.className = ""; 
-    
     nameDisplay.style.background = "none";
     nameDisplay.style.webkitTextFillColor = "initial";
     nameDisplay.style.textShadow = "none";
@@ -926,6 +922,7 @@ document.getElementById("btn-back-scan").onclick = () => {
     }
 };
 
+// Usunięto potwierdzenie "Opuścić zamówienie?" (Zgodnie z prośbą)
 document.getElementById("btn-finish-icon").onclick = () => { 
     exitToDashboard();
 };
