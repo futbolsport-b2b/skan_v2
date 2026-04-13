@@ -63,12 +63,9 @@ window.addEventListener('popstate', (event) => {
         return;
     }
 
+    // FIX v2.1: Brak pytań o potwierdzenie przy cofaniu z zamówienia
     if (currentView === 'task-panel' && targetView === 'view-orders-dashboard') {
-        if(confirm("Opuścić zamówienie?")) {
-            exitToDashboard();
-        } else {
-            history.pushState({ view: 'task-panel' }, "", "#task-panel");
-        }
+        exitToDashboard();
         return;
     }
 
@@ -277,7 +274,7 @@ function getColorComponents(name) {
     if (!name) return MALE_COLORS[0];
     const cleanName = name.trim().toUpperCase();
 
-    // Awaryjny kolor VIP Blue 
+    // Awaryjny kolor VIP Blue dla algorytmu pod maską
     if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
         return { hue: 220, saturation: 100, lightness: 30 }; 
     }
@@ -355,7 +352,7 @@ function renderUsers(users) {
         const initials = window.userInitialsMap[u.name] || "??";
         const cleanName = String(u.name).trim().toUpperCase();
         
-        // Zmieniono flagę z isGold na isVIPBlue
+        // Rozpoznanie VIP BLUE
         const isVIPBlue = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
         
         const colorComp = getColorComponents(u.name);
@@ -367,8 +364,6 @@ function renderUsers(users) {
 
         let initialsColor, qtyColor, labelColor, textColor, progressTrackBg, progressFillBg, iconMain, iconSec, iconThird, iconCircle, iconStroke;
 
-        // Jeśli VIP Blue to pozwalamy, aby style.css zrobił całą magię, 
-        // ale awaryjnie wstrzykujemy biały tekst inline, żeby uniknąć czarnych napisów z poprzedniej wersji
         if (isVIPBlue) {
             btn.classList.add("vip-blue"); 
             initialsColor = "#FFFFFF";
@@ -376,7 +371,6 @@ function renderUsers(users) {
             labelColor = "#FFFFFF";
             textColor = "#FFFFFF";
             
-            // Kolory dla SVG - by pasowały do reszty
             iconMain = "rgba(255,255,255,0.95)";
             iconSec = "rgba(255,255,255,0.7)";
             iconThird = "rgba(255,255,255,0.4)";
@@ -958,10 +952,9 @@ document.getElementById("btn-back-scan").onclick = () => {
     }
 };
 
+// FIX v2.1: Brak pytań o potwierdzenie przy kliknięciu przycisku Zakończ
 document.getElementById("btn-finish-icon").onclick = () => { 
-    if(confirm("Opuścić zamówienie?")) {
-        exitToDashboard();
-    }
+    exitToDashboard();
 };
 
 document.getElementById("btn-prev").onclick = () => { if(!isProcessing) fetchNext(currentOffset - 1); };
