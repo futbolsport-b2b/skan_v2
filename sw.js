@@ -1,4 +1,4 @@
-const CACHE_NAME = 'b2b-terminal-v6.0';
+const CACHE_NAME = 'b2b-terminal-v7.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -6,7 +6,6 @@ const ASSETS_TO_CACHE = [
   './app.js',
   './manifest.json',
   './logo.png'
-  // USUNIĘTO LINK DO HTML5-QRCODE!
 ];
 
 self.addEventListener('install', event => {
