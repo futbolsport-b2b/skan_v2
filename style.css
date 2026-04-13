@@ -1,3 +1,4 @@
+/* v1.6 OPTIMIZED FOR TERMINAL MOBILE */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -52,7 +53,6 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .user-tile-progress-text { position: absolute; top: 50%; font-size: 11px; font-weight: 900; z-index: 2; transition: all 0.6s ease; }
 .user-completed-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; margin-top: 2px;}
 
-/* v1.5 FIX: PRAWDZIWY, METALICZNY ZŁOTY I CZARNE WNĘTRZE KAFELKA VIP */
 .btn-user.vip-gold {
     background: linear-gradient(135deg, #E6C27A 0%, #D4AF37 50%, #997A00 100%) !important;
     border: 2px solid #FFDF73 !important;
@@ -76,7 +76,6 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
     background-color: #111 !important;
 }
 
-/* Hardcode wymuszający zmianę kolorów wewnątrz SVG Paczki na czarny */
 .btn-user.vip-gold .user-box-icon svg polygon[fill="rgba(255,255,255,0.9)"] { fill: rgba(0,0,0,0.9) !important; }
 .btn-user.vip-gold .user-box-icon svg polygon[fill="rgba(255,255,255,0.6)"] { fill: rgba(0,0,0,0.7) !important; }
 .btn-user.vip-gold .user-box-icon svg polygon[fill="rgba(255,255,255,0.3)"] { fill: rgba(0,0,0,0.5) !important; }
