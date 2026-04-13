@@ -1,4 +1,4 @@
-const CACHE_NAME = 'b2b-terminal-v3.0';
+const CACHE_NAME = 'b2b-terminal-v4.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -10,9 +10,7 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', event => {
-  // Wymusza natychmiastowe wgranie nowego Service Workera
   self.skipWaiting();
-  
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -31,9 +29,7 @@ self.addEventListener('fetch', event => {
 });
 
 self.addEventListener('activate', event => {
-  // Przejmuje natychmiastową kontrolę nad otwartymi kartami
   event.waitUntil(self.clients.claim());
-  
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
