@@ -1,4 +1,4 @@
-/* v2.0 OPTIMIZED FOR TERMINAL MOBILE - VIP BLUE RULES */
+/* v2.1 OPTIMIZED FOR TERMINAL MOBILE - VIP BLUE & NO CONFIRMS */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -54,8 +54,7 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .user-completed-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; margin-top: 2px;}
 
 /* ========================================================
-   VIP BLUE (Ł.C.) - NOWY EFEKT 
-   Głęboki błękit inspirowany podesłaną grafiką
+   VIP BLUE (Ł.C.) - NOWY EFEKT Z FOTO
    ======================================================== */
 .btn-user.vip-blue {
     /* Mroczny, bogaty błękit przechodzący w nasycony niebieski z poświatą */
