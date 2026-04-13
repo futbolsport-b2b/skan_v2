@@ -10,10 +10,8 @@ let activeDashboardTab = 'todo';
 
 let activeSearchQuery = "";
 let tempSearchQuery = "";
-
 let userColorsMap = {}; 
 
-// Usunięto obiekty kamery HTML5QrCode
 let audioCtx = null;
 let wakeLock = null;
 
@@ -21,41 +19,69 @@ let idleTimer = null;
 let currentIdleContext = null; 
 
 // ==========================================
-// GLOBALNY NASŁUCH SKANERA SPRZĘTOWEGO (NEWLAND)
+// OBSŁUGA SKANERA SPRZĘTOWEGO (UKRYTE POLE) v7.0
 // ==========================================
-let barcodeBuffer = "";
-let barcodeTimeout = null;
+let scanTimeout = null;
 
-document.addEventListener('keydown', (e) => {
-    // Zapobiegamy przechwyceniu, jeśli użytkownik kliknąłby w jakieś pole tekstowe (chociaż ich nie mamy)
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+// Utrzymywanie aktywnego pola tekstowego by skaner miał gdzie "pisać"
+function maintainScannerFocus() {
+    const hiddenInput = document.getElementById('hidden-scanner-input');
+    if (!hiddenInput) return;
 
-    // Skaner sprzętowy wysyła klawisz "Enter" po zeskanowaniu kodu
-    if (e.key === 'Enter' && barcodeBuffer.length > 0) {
-        handleHardwareScan(barcodeBuffer);
-        barcodeBuffer = "";
-        return;
+    const currentView = getCurrentViewId();
+    const qtyModalOpen = document.getElementById('qty-modal').style.display === 'flex';
+    const searchModalOpen = document.getElementById('search-modal').style.display === 'flex';
+
+    // Wymuszaj focus TYLKO gdy pracownik jest w zadaniu i nie ma otwartych okienek
+    if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !isProcessing) {
+        hiddenInput.focus();
+    } else {
+        hiddenInput.blur();
     }
+}
 
-    // Zbieramy tylko proste znaki (litery, cyfry)
-    if (e.key.length === 1) {
-        barcodeBuffer += e.key;
-        // Skanery wklepują tekst bardzo szybko (< 20ms na znak). Jeśli nastąpi pauza > 100ms, to znaczy że to nie skaner
-        clearTimeout(barcodeTimeout);
-        barcodeTimeout = setTimeout(() => {
-            barcodeBuffer = ""; 
-        }, 100); 
-    }
-});
+// Inicjalizacja nasłuchu dla skanera (zostanie wywołana w window.onload)
+function initHardwareScanner() {
+    const hiddenInput = document.getElementById('hidden-scanner-input');
+    if (!hiddenInput) return;
+
+    // Przechwytywanie tekstu wklepanego przez skaner
+    hiddenInput.addEventListener('input', (e) => {
+        clearTimeout(scanTimeout);
+        // Skaner wklepuje kod w ułamku sekundy. Gdy skończy (100ms ciszy), analizujemy go.
+        scanTimeout = setTimeout(() => {
+            let code = hiddenInput.value.trim();
+            if (code.length > 0) {
+                hiddenInput.value = ""; // Czyścimy pole
+                handleHardwareScan(code);
+            }
+        }, 100);
+    });
+
+    // Zabezpieczenie: skanery często wysyłają klawisz Enter na koniec
+    hiddenInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(scanTimeout);
+            let code = hiddenInput.value.trim();
+            if (code.length > 0) {
+                hiddenInput.value = ""; // Czyścimy pole
+                handleHardwareScan(code);
+            }
+        }
+    });
+
+    // Agresywne utrzymywanie focusu (jeśli użytkownik tapnie gdziekolwiek na ekranie, przywróć)
+    document.addEventListener('click', maintainScannerFocus);
+    window.addEventListener('focus', maintainScannerFocus);
+}
 
 function handleHardwareScan(scannedCode) {
     const code = scannedCode.trim();
     if (!code) return;
 
-    // Reagujemy na skanowanie TYLKO w widoku konkretnego produktu
     if (getCurrentViewId() !== 'task-panel') return;
     
-    // Ignorujemy skanowanie, jeśli otwarty jest wpis ręczny, wyszukiwarka lub trwa zapis
     if (document.getElementById('qty-modal').style.display === 'flex' || 
         document.getElementById('search-modal').style.display === 'flex' ||
         isProcessing) {
@@ -73,7 +99,7 @@ function handleHardwareScan(scannedCode) {
             if (targetItem.pozostalo > 1) {
                 openNumpadModal();
             } else {
-                sendVal(1, "scan"); // Bezpośredni zapis
+                sendVal(1, "scan"); 
             }
         }, 300);
     } else {
@@ -88,18 +114,16 @@ function handleHardwareScan(scannedCode) {
     }
 }
 
-// Wizualny błysk ekranu (ramki karty) zamiast nakładki kamery
 function triggerTaskPanelVisual(type) {
     const card = document.getElementById("main-task-card");
     if(card) {
         card.classList.remove('scan-success', 'scan-error'); 
-        void card.offsetWidth; // reset animacji
+        void card.offsetWidth; 
         card.classList.add(type === 'success' ? 'scan-success' : 'scan-error');
         setTimeout(() => { card.classList.remove('scan-success', 'scan-error'); }, 800); 
     }
 }
 // ==========================================
-
 
 function getCurrentViewId() {
     const views = ['view-user-selection', 'view-orders-dashboard', 'task-panel'];
@@ -109,6 +133,7 @@ function getCurrentViewId() {
 window.addEventListener('popstate', (event) => {
     if (document.getElementById('search-modal').style.display === 'flex') {
         document.getElementById('search-modal').style.display = 'none';
+        maintainScannerFocus(); // v7.0
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
@@ -116,6 +141,7 @@ window.addEventListener('popstate', (event) => {
     if (document.getElementById('qty-modal').style.display === 'flex') {
         document.getElementById('qty-modal').style.display = 'none';
         stopIdleTimer(); 
+        maintainScannerFocus(); // v7.0
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
@@ -197,7 +223,6 @@ document.addEventListener('visibilitychange', () => {
     if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
 
-// Solidna inicjalizacja Audio i TTS po kliknięciu ekranu 
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -309,6 +334,7 @@ document.getElementById('btn-refresh-orders').onclick = async function() {
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
+    initHardwareScanner(); // Start nasłuchu na ukryte pole v7.0
     initApp();
 };
 
@@ -338,12 +364,14 @@ function getColorComponents(name) {
 
     const firstName = cleanName.split(/\s+/)[0];
     const isFemale = firstName.endsWith('A') && firstName !== "KUBA" && firstName !== "BARNABA";
+
     const palette = isFemale ? FEMALE_COLORS : MALE_COLORS;
 
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
+    
     return palette[Math.abs(hash) % palette.length];
 }
 
@@ -407,7 +435,7 @@ function renderUsers(users) {
         const initials = window.userInitialsMap[u.name] || "??";
         
         const colorComp = getColorComponents(u.name);
-        userColorsMap[u.name] = colorComp; 
+        userColorsMap[u.name] = colorComp;
         
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
@@ -417,45 +445,34 @@ function renderUsers(users) {
         const isLow = u.progress < 15;
         const textLeft = isLow ? `calc(${u.progress}% + 6px)` : `calc(${u.progress}% - 6px)`;
         const textTransform = isLow ? `translate(0, -50%)` : `translate(-100%, -50%)`;
-
-        const initialsColor = "#ffffff";
-        const qtyColor = "#ffffff";
-        const labelColor = "rgba(255,255,255,0.9)";
         const textColor = isLow ? baseColor : "#ffffff";
-        const progressTrackBg = "#ffffff";
-        const progressFillBg = progressFillColor;
-        const iconMain = "rgba(255,255,255,0.9)";
-        const iconSec = "rgba(255,255,255,0.6)";
-        const iconThird = "rgba(255,255,255,0.3)";
-        const iconCircle = "#ffffff";
-        const iconStroke = baseColor;
 
         btn.innerHTML = `
             <div class="user-tile-top">
-                <div class="user-tile-initials" style="color: ${initialsColor} !important; text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;">${initials}</div>
+                <div class="user-tile-initials" style="color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${initials}</div>
             </div>
             
             <div class="user-tile-bottom">
                 <div class="user-completed-row">
                     <div class="user-box-icon">
                         <svg width="26" height="26" viewBox="0 0 24 24">
-                          <polygon points="12,3 3,8 12,13 21,8" fill="${iconMain}"/>
-                          <polygon points="3,9 3,18 12,23 12,14" fill="${iconSec}"/>
-                          <polygon points="21,9 21,18 12,23 12,14" fill="${iconThird}"/>
-                          <circle cx="18" cy="18" r="6" fill="${iconCircle}" />
-                          <path d="M15.5 18l1.5 1.5 3-3" stroke="${iconStroke}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                          <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
+                          <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
+                          <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
+                          <circle cx="18" cy="18" r="6" fill="#ffffff" />
+                          <path d="M15.5 18l1.5 1.5 3-3" stroke="${baseColor}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                     </div>
-                    <div class="user-completed-qty" style="color: ${qtyColor} !important; text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;">${u.completed}</div>
+                    <div class="user-completed-qty" style="color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${u.completed}</div>
                 </div>
 
                 <div class="user-tile-progress-container">
-                    <div class="user-tile-progress-track" style="background: ${progressTrackBg}; border-color: #ffffff;">
-                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillBg};"></div>
-                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor} !important; text-shadow: none !important;">${u.progress}%</div>
+                    <div class="user-tile-progress-track" style="background: #ffffff; border-color: #ffffff;">
+                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillColor};"></div>
+                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor}; text-shadow: none;">${u.progress}%</div>
                     </div>
                 </div>
-                <div class="user-completed-label" style="color: ${labelColor} !important; text-shadow: none !important;">ZREALIZOWANO DZIŚ</div>
+                <div class="user-completed-label" style="color: rgba(255,255,255,0.9); text-shadow: none;">ZREALIZOWANO DZIŚ</div>
             </div>
         `;
         
@@ -537,6 +554,7 @@ document.getElementById('np-search-del').onclick = (e) => {
 
 document.getElementById('btn-search-cancel').onclick = () => {
     document.getElementById('search-modal').style.display = 'none';
+    maintainScannerFocus(); // v7.0 Wymuszamy przywrócenie focusu po zamknięciu szukajki
 };
 
 document.getElementById('btn-search-ok').onclick = () => {
@@ -546,6 +564,7 @@ document.getElementById('btn-search-ok').onclick = () => {
     }
     document.getElementById('search-modal').style.display = 'none';
     renderOrdersFromGlobal();
+    maintainScannerFocus(); // v7.0
 };
 
 async function loadOrders() {
@@ -667,6 +686,7 @@ function setLoadingState(active) {
     const card = document.querySelector('.task-card'); 
     if (active) { card.classList.add('loading-mode'); isProcessing = true; } 
     else { card.classList.remove('loading-mode'); isProcessing = false; } 
+    maintainScannerFocus(); // v7.0 Sprawdzenie focusu po animacji wczytywania
 }
 
 async function fetchNext(offset) {
@@ -707,7 +727,6 @@ async function fetchNext(offset) {
             updateLockUI();
             setLoadingState(false);
             
-            // Dajemy czas na reakcję i startujemy cichy timer gotowości do sprzętowego skanu
             setTimeout(() => { startIdleTimer('scan'); }, 500);
 
         } else {
@@ -733,6 +752,7 @@ function closeZoom() {
     const overlay = document.getElementById('image-zoom-overlay');
     overlay.style.opacity = '0';
     setTimeout(() => overlay.style.display = 'none', 300);
+    maintainScannerFocus(); // v7.0
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
@@ -757,10 +777,7 @@ function openNumpadModal() {
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
-    // Po zamknięciu pad'a, po prostu wracamy do trybu nasłuchu sprzętowego
-    if(getCurrentViewId() === 'task-panel') {
-        startIdleTimer('scan');
-    }
+    maintainScannerFocus(); // v7.0 Przywracamy nasłuch na laser po kliknięciu anuluj
 };
 
 function sendVal(q, mode) {
@@ -802,7 +819,7 @@ document.getElementById("btn-qty-ok").onclick = () => {
         if (document.getElementById("qty-modal").style.display === "flex") startIdleTimer('numpad'); 
         return; 
     }
-    // Ponieważ klikamy w numpad, to zawsze jest "manual" chyba że z automata wywołane przez skaner sprzętowy
+    // Zawsze manual jeśli klikamy ok na klawiaturze ekranowej
     sendVal(val, "manual"); 
 };
 
@@ -838,6 +855,8 @@ function showView(id, pushToHistory = true) {
     if (pushToHistory && currentView !== id) {
         history.pushState({ view: id }, "", "#" + id);
     }
+    
+    maintainScannerFocus(); // v7.0 Upewnienie się że po zmianie widoku focus wraca tam gdzie trzeba
 }
 
 function showError(m, muteVoice = false) {
