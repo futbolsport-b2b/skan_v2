@@ -19,80 +19,11 @@ let idleTimer = null;
 let currentIdleContext = null; 
 
 // ==========================================
-// TWARDE WSPARCIE MOWY DLA ANDROIDA
-// ==========================================
-window.speechUtterances = []; 
-let availableVoices = [];
-
-if ('speechSynthesis' in window) {
-    window.speechSynthesis.onvoiceschanged = () => {
-        availableVoices = window.speechSynthesis.getVoices();
-    };
-    availableVoices = window.speechSynthesis.getVoices();
-}
-
-function speakVoice(text) {
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); 
-        
-        let utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.1;
-        utterance.lang = 'pl-PL'; 
-
-        if (availableVoices.length === 0) {
-            availableVoices = window.speechSynthesis.getVoices();
-        }
-        
-        const plVoice = availableVoices.find(voice => 
-            voice.lang === 'pl-PL' || voice.lang === 'pl_PL' || voice.lang.includes('pl')
-        );
-
-        if (plVoice) {
-            utterance.voice = plVoice;
-        }
-
-        window.speechUtterances.push(utterance);
-
-        utterance.onend = function() {
-            window.speechUtterances = window.speechUtterances.filter(u => u !== utterance);
-        };
-        utterance.onerror = function() {
-            window.speechUtterances = window.speechUtterances.filter(u => u !== utterance);
-        };
-
-        setTimeout(() => {
-            window.speechSynthesis.speak(utterance);
-        }, 50);
-    }
-}
-
-function unlockAudioAPI() {
-    if (!audioCtx) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtx = new AudioContext();
-    }
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const buffer = audioCtx.createBuffer(1, 1, 22050);
-    const source = audioCtx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioCtx.destination);
-    source.start(0);
-
-    if ('speechSynthesis' in window) {
-        let u = new SpeechSynthesisUtterance(' '); 
-        u.volume = 0;
-        window.speechSynthesis.speak(u);
-    }
-}
-document.body.addEventListener('click', unlockAudioAPI, { once: true });
-document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
-
-
-// ==========================================
-// POWRÓT DO DZIAŁAJĄCEJ LOGIKI SKANERA (Z wersji v7.0)
+// OBSŁUGA SKANERA SPRZĘTOWEGO (UKRYTE POLE) v7.0
 // ==========================================
 let scanTimeout = null;
 
+// Utrzymywanie aktywnego pola tekstowego by skaner miał gdzie "pisać"
 function maintainScannerFocus() {
     const hiddenInput = document.getElementById('hidden-scanner-input');
     if (!hiddenInput) return;
@@ -101,6 +32,7 @@ function maintainScannerFocus() {
     const qtyModalOpen = document.getElementById('qty-modal').style.display === 'flex';
     const searchModalOpen = document.getElementById('search-modal').style.display === 'flex';
 
+    // Wymuszaj focus TYLKO gdy pracownik jest w zadaniu i nie ma otwartych okienek
     if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !isProcessing) {
         hiddenInput.focus();
     } else {
@@ -108,36 +40,38 @@ function maintainScannerFocus() {
     }
 }
 
+// Inicjalizacja nasłuchu dla skanera (zostanie wywołana w window.onload)
 function initHardwareScanner() {
     const hiddenInput = document.getElementById('hidden-scanner-input');
     if (!hiddenInput) return;
 
-    // Przechwytywanie wklepanego tekstu (metoda v7.0)
+    // Przechwytywanie tekstu wklepanego przez skaner
     hiddenInput.addEventListener('input', (e) => {
         clearTimeout(scanTimeout);
+        // Skaner wklepuje kod w ułamku sekundy. Gdy skończy (100ms ciszy), analizujemy go.
         scanTimeout = setTimeout(() => {
             let code = hiddenInput.value.trim();
             if (code.length > 0) {
-                hiddenInput.value = ""; 
+                hiddenInput.value = ""; // Czyścimy pole
                 handleHardwareScan(code);
             }
         }, 100);
     });
 
-    // Przechwytywanie klawisza Enter (metoda v7.0)
+    // Zabezpieczenie: skanery często wysyłają klawisz Enter na koniec
     hiddenInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             clearTimeout(scanTimeout);
             let code = hiddenInput.value.trim();
             if (code.length > 0) {
-                hiddenInput.value = ""; 
+                hiddenInput.value = ""; // Czyścimy pole
                 handleHardwareScan(code);
             }
         }
     });
 
-    // Agresywny powrót focusu przy każdym kliknięciu
+    // Agresywne utrzymywanie focusu (jeśli użytkownik tapnie gdziekolwiek na ekranie, przywróć)
     document.addEventListener('click', maintainScannerFocus);
     window.addEventListener('focus', maintainScannerFocus);
 }
@@ -191,7 +125,6 @@ function triggerTaskPanelVisual(type) {
 }
 // ==========================================
 
-
 function getCurrentViewId() {
     const views = ['view-user-selection', 'view-orders-dashboard', 'task-panel'];
     return views.find(v => document.getElementById(v).style.display === 'flex');
@@ -200,7 +133,7 @@ function getCurrentViewId() {
 window.addEventListener('popstate', (event) => {
     if (document.getElementById('search-modal').style.display === 'flex') {
         document.getElementById('search-modal').style.display = 'none';
-        maintainScannerFocus(); 
+        maintainScannerFocus(); // v7.0
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
@@ -208,7 +141,7 @@ window.addEventListener('popstate', (event) => {
     if (document.getElementById('qty-modal').style.display === 'flex') {
         document.getElementById('qty-modal').style.display = 'none';
         stopIdleTimer(); 
-        maintainScannerFocus(); 
+        maintainScannerFocus(); // v7.0
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
@@ -290,6 +223,62 @@ document.addEventListener('visibilitychange', () => {
     if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
 
+function unlockAudioAPI() {
+    if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const buffer = audioCtx.createBuffer(1, 1, 22050);
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioCtx.destination);
+    source.start(0);
+
+    if ('speechSynthesis' in window) {
+        let u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+    }
+}
+document.body.addEventListener('click', unlockAudioAPI, { once: true });
+document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
+
+function speakVoice(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); 
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'pl-PL';
+        utterance.rate = 1.1; 
+        window.speechSynthesis.speak(utterance);
+    }
+}
+
+function playSound(type) {
+    if (!audioCtx) unlockAudioAPI();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    if (type === 'success') {
+        osc.type = 'square'; 
+        osc.frequency.setValueAtTime(2000, audioCtx.currentTime); 
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime); 
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start(audioCtx.currentTime); 
+        osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'error') {
+        if ("vibrate" in navigator) navigator.vibrate([200]); 
+        osc.type = 'sawtooth'; 
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime); 
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime); 
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start(audioCtx.currentTime); 
+        osc.stop(audioCtx.currentTime + 0.4);
+    }
+}
+
 function isEanValid(ean) {
     if (ean === null || ean === undefined) return false;
     const str = String(ean).trim().toUpperCase();
@@ -297,7 +286,6 @@ function isEanValid(ean) {
     return true;
 }
 
-// Elegancki, biały piktogram bez zieleni
 function updateLockUI() {
     const btn = document.getElementById('btn-manual-lock');
     const iconClosed = document.getElementById('icon-lock-closed');
@@ -312,35 +300,17 @@ function updateLockUI() {
     }
 
     const manualAddBtn = document.getElementById('btn-manual-add');
-    const scanPrompt = document.getElementById('hw-scan-prompt');
+    const indicator = document.getElementById('hw-scan-indicator');
     
-    if (manualAddBtn && scanPrompt) {
+    if (manualAddBtn && indicator) {
         if (targetItem) {
             const hasEan = isEanValid(targetItem.ean);
             if (!hasEan) {
-                scanPrompt.classList.remove('active');
-                scanPrompt.classList.add('error');
-                scanPrompt.innerHTML = `
-                    <svg class="scan-icon-elegant" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="15" y1="9" x2="9" y2="15"></line>
-                        <line x1="9" y1="9" x2="15" y2="15"></line>
-                    </svg>
-                    <span>BRAK KODU EAN</span>`;
+                indicator.innerHTML = `<span style="color:var(--error); font-weight:800;">BRAK KODU EAN</span>`;
                 manualAddBtn.disabled = false; 
                 manualAddBtn.classList.add('force-unlocked'); 
             } else {
-                scanPrompt.classList.remove('error');
-                scanPrompt.classList.add('active');
-                scanPrompt.innerHTML = `
-                    <svg class="scan-icon-elegant" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 7V4h3"></path>
-                        <path d="M20 7V4h-3"></path>
-                        <path d="M4 17v3h3"></path>
-                        <path d="M20 17v3h-3"></path>
-                        <line x1="8" y1="12" x2="16" y2="12" stroke="#FFFFFF" stroke-width="2"></line>
-                    </svg>
-                    <span>UŻYJ PRZYCISKU SKANOWANIA</span>`;
+                indicator.innerHTML = `<span style="color:var(--accent-green); font-weight:800;">🟢 CZYTNIK AKTYWNY</span>`;
                 manualAddBtn.disabled = !isManualUnlocked; 
                 manualAddBtn.classList.remove('force-unlocked');
             }
@@ -364,7 +334,7 @@ document.getElementById('btn-refresh-orders').onclick = async function() {
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
-    initHardwareScanner(); // Aktywacja ukrytego pola 
+    initHardwareScanner(); // Start nasłuchu na ukryte pole v7.0
     initApp();
 };
 
@@ -394,12 +364,14 @@ function getColorComponents(name) {
 
     const firstName = cleanName.split(/\s+/)[0];
     const isFemale = firstName.endsWith('A') && firstName !== "KUBA" && firstName !== "BARNABA";
+
     const palette = isFemale ? FEMALE_COLORS : MALE_COLORS;
 
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
+    
     return palette[Math.abs(hash) % palette.length];
 }
 
@@ -582,7 +554,7 @@ document.getElementById('np-search-del').onclick = (e) => {
 
 document.getElementById('btn-search-cancel').onclick = () => {
     document.getElementById('search-modal').style.display = 'none';
-    maintainScannerFocus(); 
+    maintainScannerFocus(); // v7.0 Wymuszamy przywrócenie focusu po zamknięciu szukajki
 };
 
 document.getElementById('btn-search-ok').onclick = () => {
@@ -592,7 +564,7 @@ document.getElementById('btn-search-ok').onclick = () => {
     }
     document.getElementById('search-modal').style.display = 'none';
     renderOrdersFromGlobal();
-    maintainScannerFocus(); 
+    maintainScannerFocus(); // v7.0
 };
 
 async function loadOrders() {
@@ -714,7 +686,7 @@ function setLoadingState(active) {
     const card = document.querySelector('.task-card'); 
     if (active) { card.classList.add('loading-mode'); isProcessing = true; } 
     else { card.classList.remove('loading-mode'); isProcessing = false; } 
-    maintainScannerFocus(); 
+    maintainScannerFocus(); // v7.0 Sprawdzenie focusu po animacji wczytywania
 }
 
 async function fetchNext(offset) {
@@ -780,7 +752,7 @@ function closeZoom() {
     const overlay = document.getElementById('image-zoom-overlay');
     overlay.style.opacity = '0';
     setTimeout(() => overlay.style.display = 'none', 300);
-    maintainScannerFocus(); 
+    maintainScannerFocus(); // v7.0
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
@@ -805,7 +777,7 @@ function openNumpadModal() {
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
-    maintainScannerFocus(); 
+    maintainScannerFocus(); // v7.0 Przywracamy nasłuch na laser po kliknięciu anuluj
 };
 
 function sendVal(q, mode) {
@@ -847,6 +819,7 @@ document.getElementById("btn-qty-ok").onclick = () => {
         if (document.getElementById("qty-modal").style.display === "flex") startIdleTimer('numpad'); 
         return; 
     }
+    // Zawsze manual jeśli klikamy ok na klawiaturze ekranowej
     sendVal(val, "manual"); 
 };
 
@@ -883,7 +856,7 @@ function showView(id, pushToHistory = true) {
         history.pushState({ view: id }, "", "#" + id);
     }
     
-    maintainScannerFocus(); 
+    maintainScannerFocus(); // v7.0 Upewnienie się że po zmianie widoku focus wraca tam gdzie trzeba
 }
 
 function showError(m, muteVoice = false) {
