@@ -253,50 +253,39 @@ window.onload = () => {
     initApp();
 };
 
-/* ========================================================
-   NOWE, ZOPTYMALIZOWANE PALETY KOLORÓW DLA UŻYTKOWNIKÓW
-   ======================================================== */
-
-// Mężczyźni: Głębokie, ciemne, nasycone, matowe kolory (Lightness ok 20-35%)
 const MALE_COLORS = [
-    { hue: 215, saturation: 85, lightness: 25 }, // Głęboki Granat
-    { hue: 350, saturation: 80, lightness: 25 }, // Ciemny Karmazyn (Bordo)
-    { hue: 140, saturation: 75, lightness: 20 }, // Leśna Zieleń
-    { hue: 270, saturation: 65, lightness: 28 }, // Ciemny Bakłażan
-    { hue: 25,  saturation: 90, lightness: 30 }, // Rdzawy / Ciemny Pomarańcz
-    { hue: 185, saturation: 90, lightness: 20 }, // Ciemny Morski (Teal)
-    { hue: 230, saturation: 70, lightness: 35 }, // Przygaszony Indygo
-    { hue: 0,   saturation: 0,  lightness: 20 }  // Ciemny Grafit (Ash)
+    { hue: 215, saturation: 85, lightness: 25 }, 
+    { hue: 350, saturation: 80, lightness: 25 }, 
+    { hue: 140, saturation: 75, lightness: 20 }, 
+    { hue: 270, saturation: 65, lightness: 28 }, 
+    { hue: 25,  saturation: 90, lightness: 30 }, 
+    { hue: 185, saturation: 90, lightness: 20 }, 
+    { hue: 230, saturation: 70, lightness: 35 }, 
+    { hue: 0,   saturation: 0,  lightness: 20 }  
 ];
 
-// Kobiety: Pastelowe, jasne, łagodne kolory (Lightness ok 60-65% dla czytelności z białym tekstem)
 const FEMALE_COLORS = [
-    { hue: 340, saturation: 70, lightness: 60 }, // Pudrowy Róż
-    { hue: 280, saturation: 55, lightness: 60 }, // Lawenda
-    { hue: 15,  saturation: 80, lightness: 60 }, // Brzoskwinia
-    { hue: 170, saturation: 60, lightness: 50 }, // Świeża Mięta
-    { hue: 200, saturation: 75, lightness: 60 }, // Błękit Nieba
-    { hue: 350, saturation: 75, lightness: 65 }  // Delikatny Koral
+    { hue: 340, saturation: 70, lightness: 60 }, 
+    { hue: 280, saturation: 55, lightness: 60 }, 
+    { hue: 15,  saturation: 80, lightness: 60 }, 
+    { hue: 170, saturation: 60, lightness: 50 }, 
+    { hue: 200, saturation: 75, lightness: 60 }, 
+    { hue: 350, saturation: 75, lightness: 65 }  
 ];
 
 function getColorComponents(name) {
     if (!name) return MALE_COLORS[0];
     const cleanName = name.trim().toUpperCase();
 
-    // ZŁOTY WYJĄTEK - Właściwe stylowanie jest teraz całkowicie w CSS, 
-    // ale zachowujemy tu awaryjny kolor bazowy dla algorytmu pod maską.
     if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
         return { hue: 45, saturation: 100, lightness: 50 }; 
     }
 
-    // LOGIKA GENDER
     const firstName = cleanName.split(/\s+/)[0];
-    // Wyjątki dla polskich imion kończących się na "A", ale będących męskimi:
     const isFemale = firstName.endsWith('A') && firstName !== "KUBA" && firstName !== "BARNABA";
 
     const palette = isFemale ? FEMALE_COLORS : MALE_COLORS;
 
-    // STAŁY ALGORYTM HASZUJĄCY (Gwarantuje, że kolor dla imienia/nazwiska zawsze będzie ten sam)
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -365,54 +354,75 @@ function renderUsers(users) {
         const initials = window.userInitialsMap[u.name] || "??";
         const cleanName = String(u.name).trim().toUpperCase();
         
-        // Wykrycie VIP'a do nałożenia klasy w CSS
         const isGold = (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C"));
         
         const colorComp = getColorComponents(u.name);
         userColorsMap[u.name] = colorComp;
 
-        // Jeśli to VIP, baza koloru i tak nadpisana jest przez gradient w klasie CSS
-        const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
-        const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
-        
         const isLow = u.progress < 15;
         const textLeft = isLow ? `calc(${u.progress}% + 6px)` : `calc(${u.progress}% - 6px)`;
         const textTransform = isLow ? `translate(0, -50%)` : `translate(-100%, -50%)`;
 
+        let initialsColor, qtyColor, labelColor, textColor, progressTrackBg, progressFillBg, iconMain, iconSec, iconThird, iconCircle, iconStroke;
+
         if (isGold) {
             btn.classList.add("vip-gold");
+            // Twarde nadpisanie inline - WYMUSZA kolor czarny niezależnie od CSS
+            initialsColor = "#000000";
+            qtyColor = "#000000";
+            labelColor = "#000000";
+            textColor = "#000000";
+            progressTrackBg = "rgba(0,0,0,0.15)";
+            progressFillBg = "#000000";
+            iconMain = "rgba(0,0,0,0.9)";
+            iconSec = "rgba(0,0,0,0.7)";
+            iconThird = "rgba(0,0,0,0.5)";
+            iconCircle = "#000000";
+            iconStroke = "#C5A059"; 
         } else {
+            const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
+            const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
             btn.style.backgroundColor = baseColor;
+            
+            initialsColor = "#ffffff";
+            qtyColor = "#ffffff";
+            labelColor = "rgba(255,255,255,0.9)";
+            textColor = isLow ? baseColor : "#ffffff";
+            progressTrackBg = "#ffffff";
+            progressFillBg = progressFillColor;
+            iconMain = "rgba(255,255,255,0.9)";
+            iconSec = "rgba(255,255,255,0.6)";
+            iconThird = "rgba(255,255,255,0.3)";
+            iconCircle = "#ffffff";
+            iconStroke = baseColor;
         }
-
-        const textColor = isLow ? baseColor : "#ffffff";
 
         btn.innerHTML = `
             <div class="user-tile-top">
-                <div class="user-tile-initials">${initials}</div>
+                <div class="user-tile-initials" style="color: ${initialsColor} !important; text-shadow: ${isGold ? 'none' : '0 2px 4px rgba(0,0,0,0.3)'} !important;">${initials}</div>
             </div>
             
             <div class="user-tile-bottom">
                 <div class="user-completed-row">
                     <div class="user-box-icon">
                         <svg width="26" height="26" viewBox="0 0 24 24">
-                          <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
-                          <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
-                          <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
-                          <circle cx="18" cy="18" r="6" fill="#ffffff" />
-                          <path d="M15.5 18l1.5 1.5 3-3" stroke="${baseColor}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                          <polygon points="12,3 3,8 12,13 21,8" fill="${iconMain}"/>
+                          <polygon points="3,9 3,18 12,23 12,14" fill="${iconSec}"/>
+                          <polygon points="21,9 21,18 12,23 12,14" fill="${iconThird}"/>
+                          <circle cx="18" cy="18" r="6" fill="${iconCircle}" />
+                          <path d="M15.5 18l1.5 1.5 3-3" stroke="${iconStroke}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                     </div>
-                    <div class="user-completed-qty">${u.completed}</div>
+                    <div class="user-completed-qty" style="color: ${qtyColor} !important; text-shadow: ${isGold ? 'none' : '0 2px 4px rgba(0,0,0,0.3)'} !important;">${u.completed}</div>
                 </div>
 
                 <div class="user-tile-progress-container">
-                    <div class="user-tile-progress-track">
-                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillColor};"></div>
-                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor};">${u.progress}%</div>
+                    <div class="user-tile-progress-track" style="background: ${progressTrackBg}; border-color: ${isGold ? '#000000' : '#ffffff'};">
+                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillBg};"></div>
+                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor} !important;">${u.progress}%</div>
                     </div>
                 </div>
-                <div class="user-completed-label">ZREALIZOWANO DZIŚ</div>
+                <div class="user-completed-label" style="color: ${labelColor} !important;">ZREALIZOWANO DZIŚ</div>
             </div>
         `;
         
@@ -435,7 +445,6 @@ function selectUser(user) {
     nameDisplay.className = ""; 
     nameDisplay.style.color = ""; 
     
-    // Gradient dla imienia w panelu jeśli VIP
     if (isGold) {
         nameDisplay.classList.add("vip-gold-text");
     } else {
