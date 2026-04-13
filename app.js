@@ -18,10 +18,8 @@ let wakeLock = null;
 let idleTimer = null;
 let currentIdleContext = null; 
 
-// ==========================================
-// TWARDE WSPARCIE MOWY DLA ANDROIDA (Rozwiązanie "Garbage Collection Bug")
-// ==========================================
-window.speechUtterances = []; // Globalna tablica ratująca mowę na Androidzie przed zniknięciem z pamięci
+// Silnik TTS Android
+window.speechUtterances = []; 
 let availableVoices = [];
 
 if ('speechSynthesis' in window) {
@@ -51,7 +49,6 @@ function speakVoice(text) {
             utterance.voice = plVoice;
         }
 
-        // Dodanie do globalnej tablicy, aby system Android nie ubił mowy w połowie
         window.speechUtterances.push(utterance);
 
         utterance.onend = function() {
@@ -87,62 +84,40 @@ function unlockAudioAPI() {
 }
 document.body.addEventListener('click', unlockAudioAPI, { once: true });
 document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
-// ==========================================
-
 
 // ==========================================
-// CZYSTY SKANER SPRZĘTOWY (Solidny Keyboard Wedge)
+// NOWY GLOBALNY NASŁUCH SKANERA SPRZĘTOWEGO (BEZ INPUTA) - v14.0
 // ==========================================
-let scanTimeout = null;
+let barcodeBuffer = "";
+let lastKeyTime = Date.now();
 
-function maintainScannerFocus() {
-    const hiddenInput = document.getElementById('hidden-scanner-input');
-    if (!hiddenInput) return;
+// Skrypt mierzy czas pomiędzy wciśnięciami. Jeśli znaki pojawiają się szybciej niż 30ms 
+// (człowiek tak szybko nie pisze), traktuje to jako skaner kodów kreskowych.
+document.addEventListener('keydown', (e) => {
+    // Jeśli z jakiegoś powodu użytkownik byłby w wyszukiwarce (np. na PC), ignorujemy
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-    const currentView = getCurrentViewId();
-    const qtyModalOpen = document.getElementById('qty-modal').style.display === 'flex';
-    const searchModalOpen = document.getElementById('search-modal').style.display === 'flex';
-
-    if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !isProcessing) {
-        hiddenInput.focus();
-    } else {
-        hiddenInput.blur();
+    const currentTime = Date.now();
+    const timeDiff = currentTime - lastKeyTime;
+    
+    // Resetuj bufor, jeśli przerwa między znakami jest za długa (to znaczy, że ktoś puka w fizyczną klawiaturę)
+    if (timeDiff > 40) {
+        barcodeBuffer = "";
     }
-}
 
-function initHardwareScanner() {
-    const hiddenInput = document.getElementById('hidden-scanner-input');
-    if (!hiddenInput) return;
-
-    // Metoda 1: Nasłuch na całe wklejone teksty (wiele skanerów robi to w 1ms)
-    hiddenInput.addEventListener('input', (e) => {
-        clearTimeout(scanTimeout);
-        scanTimeout = setTimeout(() => {
-            let code = hiddenInput.value.trim();
-            if (code.length > 0) {
-                hiddenInput.value = ""; 
-                handleHardwareScan(code);
-            }
-        }, 100);
-    });
-
-    // Metoda 2: Potwierdzenie enterem od skanera
-    hiddenInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+    if (e.key === 'Enter') {
+        if (barcodeBuffer.length > 0) {
             e.preventDefault();
-            clearTimeout(scanTimeout);
-            let code = hiddenInput.value.trim();
-            if (code.length > 0) {
-                hiddenInput.value = ""; 
-                handleHardwareScan(code);
-            }
+            handleHardwareScan(barcodeBuffer);
+            barcodeBuffer = "";
         }
-    });
+    } else if (e.key.length === 1) { // Zbieraj tylko pojedyncze znaki (litery/cyfry)
+        barcodeBuffer += e.key;
+    }
+    
+    lastKeyTime = currentTime;
+});
 
-    // Bez agresywnych pętli "blur", reagujemy tylko na dotyk w ekran
-    document.addEventListener('click', maintainScannerFocus);
-    window.addEventListener('focus', maintainScannerFocus);
-}
 
 function handleHardwareScan(scannedCode) {
     const code = scannedCode.trim();
@@ -201,7 +176,6 @@ function getCurrentViewId() {
 window.addEventListener('popstate', (event) => {
     if (document.getElementById('search-modal').style.display === 'flex') {
         document.getElementById('search-modal').style.display = 'none';
-        maintainScannerFocus(); 
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
@@ -209,7 +183,6 @@ window.addEventListener('popstate', (event) => {
     if (document.getElementById('qty-modal').style.display === 'flex') {
         document.getElementById('qty-modal').style.display = 'none';
         stopIdleTimer(); 
-        maintainScannerFocus(); 
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
@@ -298,7 +271,7 @@ function isEanValid(ean) {
     return true;
 }
 
-// Zmieniono aktualizację interfejsu na nowoczesny piktogram na dole
+// v14.0 - Eleganckie, białe piktogramy skanera 
 function updateLockUI() {
     const btn = document.getElementById('btn-manual-lock');
     const iconClosed = document.getElementById('icon-lock-closed');
@@ -321,13 +294,27 @@ function updateLockUI() {
             if (!hasEan) {
                 scanPrompt.classList.remove('active');
                 scanPrompt.classList.add('error');
-                scanPrompt.innerHTML = `<svg class="scan-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg><span>BRAK KODU EAN</span>`;
+                scanPrompt.innerHTML = `
+                    <svg class="scan-icon-elegant" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                    <span>BRAK KODU EAN</span>`;
                 manualAddBtn.disabled = false; 
                 manualAddBtn.classList.add('force-unlocked'); 
             } else {
                 scanPrompt.classList.remove('error');
                 scanPrompt.classList.add('active');
-                scanPrompt.innerHTML = `<svg class="scan-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h3"></path><path d="M20 7V4h-3"></path><path d="M4 17v3h3"></path><path d="M20 17v3h-3"></path><line x1="2" y1="12" x2="22" y2="12" stroke="var(--error)" stroke-width="2"></line><line x1="8" y1="8" x2="8" y2="16"></line><line x1="12" y1="8" x2="12" y2="16"></line><line x1="16" y1="8" x2="16" y2="16"></line></svg><span>UŻYJ PRZYCISKU SKANOWANIA</span>`;
+                scanPrompt.innerHTML = `
+                    <svg class="scan-icon-elegant" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 7V4h3"></path>
+                        <path d="M20 7V4h-3"></path>
+                        <path d="M4 17v3h3"></path>
+                        <path d="M20 17v3h-3"></path>
+                        <line x1="8" y1="12" x2="16" y2="12" stroke="#FFFFFF" stroke-width="2"></line>
+                    </svg>
+                    <span>UŻYJ PRZYCISKU SKANOWANIA</span>`;
                 manualAddBtn.disabled = !isManualUnlocked; 
                 manualAddBtn.classList.remove('force-unlocked');
             }
@@ -351,7 +338,6 @@ document.getElementById('btn-refresh-orders').onclick = async function() {
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
-    initHardwareScanner(); 
     initApp();
 };
 
@@ -569,7 +555,6 @@ document.getElementById('np-search-del').onclick = (e) => {
 
 document.getElementById('btn-search-cancel').onclick = () => {
     document.getElementById('search-modal').style.display = 'none';
-    maintainScannerFocus(); 
 };
 
 document.getElementById('btn-search-ok').onclick = () => {
@@ -579,7 +564,6 @@ document.getElementById('btn-search-ok').onclick = () => {
     }
     document.getElementById('search-modal').style.display = 'none';
     renderOrdersFromGlobal();
-    maintainScannerFocus(); 
 };
 
 async function loadOrders() {
@@ -701,7 +685,6 @@ function setLoadingState(active) {
     const card = document.querySelector('.task-card'); 
     if (active) { card.classList.add('loading-mode'); isProcessing = true; } 
     else { card.classList.remove('loading-mode'); isProcessing = false; } 
-    maintainScannerFocus(); 
 }
 
 async function fetchNext(offset) {
@@ -767,7 +750,6 @@ function closeZoom() {
     const overlay = document.getElementById('image-zoom-overlay');
     overlay.style.opacity = '0';
     setTimeout(() => overlay.style.display = 'none', 300);
-    maintainScannerFocus(); 
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
@@ -792,7 +774,6 @@ function openNumpadModal() {
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
-    maintainScannerFocus(); 
 };
 
 function sendVal(q, mode) {
@@ -869,8 +850,6 @@ function showView(id, pushToHistory = true) {
     if (pushToHistory && currentView !== id) {
         history.pushState({ view: id }, "", "#" + id);
     }
-    
-    maintainScannerFocus(); 
 }
 
 function showError(m, muteVoice = false) {
