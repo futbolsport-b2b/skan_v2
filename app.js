@@ -29,7 +29,6 @@ function getCurrentViewId() {
     return views.find(v => document.getElementById(v).style.display === 'flex');
 }
 
-// v1.5 FIX: Wyrzucamy całkowicie błędną nawigację przez history.back() na UI, zostawiamy tylko natywną obsługę 
 window.addEventListener('popstate', (event) => {
     if (document.getElementById('search-modal').style.display === 'flex') {
         document.getElementById('search-modal').style.display = 'none';
@@ -82,7 +81,6 @@ window.addEventListener('popstate', (event) => {
     showView(targetView, false);
 });
 
-// v1.5 FIX: Twarde wymuszenie wyjścia z karty produktu i ukatrupienie starych pasków
 function exitToDashboard() {
     stopIdleTimer();
     document.getElementById("header-main-row").style.display = "none";
@@ -256,32 +254,30 @@ window.onload = () => {
     initApp();
 };
 
-// v1.5 FIX: Głębokie, mocne kolory dla mężczyzn, pastelowe dla kobiet
 const MALE_COLORS = [
-    { hue: 210, saturation: 80, lightness: 30 }, // Ciemny Granat
-    { hue: 350, saturation: 80, lightness: 30 }, // Ciemny Karmazynowy
-    { hue: 130, saturation: 60, lightness: 25 }, // Ciemna Butelkowa Zieleń
-    { hue: 280, saturation: 60, lightness: 35 }, // Ciemny Fiolet
-    { hue: 25,  saturation: 80, lightness: 35 }, // Ciemny Rdzawy
-    { hue: 180, saturation: 80, lightness: 25 }, // Ciemny Morski
-    { hue: 240, saturation: 70, lightness: 40 }, // Ciemny Indigo
-    { hue: 0,   saturation: 0,  lightness: 25 }  // Ciemny Grafit
+    { hue: 210, saturation: 80, lightness: 30 }, 
+    { hue: 350, saturation: 80, lightness: 30 }, 
+    { hue: 130, saturation: 60, lightness: 25 }, 
+    { hue: 280, saturation: 60, lightness: 35 }, 
+    { hue: 25,  saturation: 80, lightness: 35 }, 
+    { hue: 180, saturation: 80, lightness: 25 }, 
+    { hue: 240, saturation: 70, lightness: 40 }, 
+    { hue: 0,   saturation: 0,  lightness: 25 }  
 ];
 
 const FEMALE_COLORS = [
-    { hue: 340, saturation: 70, lightness: 65 }, // Różowy pastel
-    { hue: 290, saturation: 50, lightness: 65 }, // Wrzosowy
-    { hue: 170, saturation: 50, lightness: 55 }, // Miętowy
-    { hue: 20,  saturation: 80, lightness: 65 }, // Brzoskwiniowy
-    { hue: 200, saturation: 70, lightness: 65 }, // Błękitny
-    { hue: 320, saturation: 60, lightness: 65 }  // Jasna fuksja
+    { hue: 340, saturation: 70, lightness: 65 }, 
+    { hue: 290, saturation: 50, lightness: 65 }, 
+    { hue: 170, saturation: 50, lightness: 55 }, 
+    { hue: 20,  saturation: 80, lightness: 65 }, 
+    { hue: 200, saturation: 70, lightness: 65 }, 
+    { hue: 320, saturation: 60, lightness: 65 }  
 ];
 
 function getColorComponents(name) {
     if (!name) return MALE_COLORS[0];
     const cleanName = name.trim().toUpperCase();
 
-    // Awaryjnie, choć Złoty jest robiony przez CSS, by inne komponenty też miały odcień
     if (cleanName === "Ł.C." || cleanName === "Ł. C." || cleanName === "ŁC" || cleanName.includes("Ł.C")) {
         return { hue: 45, saturation: 100, lightness: 50 }; 
     }
@@ -662,7 +658,6 @@ async function fetchNext(offset) {
             updateLockUI();
             setLoadingState(false);
         } else {
-            // v1.5 FIX: Natychmiastowe czyszczenie belki i twarde wyjście do ekranu zamówień
             playSound('success'); 
             speakVoice("Zamówienie kompletne!"); 
             alert("ZAMÓWIENIE ZREALIZOWANE");
@@ -729,12 +724,15 @@ async function startScannerView() {
         disableFlip: false
     };
 
-    try {
-        if (html5QrCode.isScanning) {
+    // v1.6 FIX: Twarde zwolnienie kamery przed nowym startem (zapobiega czarnemu ekranowi)
+    if (html5QrCode.isScanning) {
+        try {
             await html5QrCode.stop();
-            html5QrCode.clear(); 
-        }
+            await html5QrCode.clear();
+        } catch (e) { console.warn("Błąd podczas zatrzymywania kamery", e); }
+    }
 
+    try {
         document.getElementById('scanner-loader').style.display = 'flex';
         
         let scanMatched = false; 
@@ -818,7 +816,6 @@ function openNumpadModal() {
     startIdleTimer('numpad');
 }
 
-// GUI BUTTONS - Zamiast history.back() twarde przekierowania dla pewności stanu 
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
@@ -924,7 +921,6 @@ function showError(m, muteVoice = false) {
     setTimeout(() => { o.style.display = "none"; }, 2000);
 }
 
-// v1.5 FIX: Wylogowanie NIE polega na history.back()
 document.getElementById("btn-logout").onclick = () => {
     sessionStorage.removeItem('manualUnlock'); isManualUnlocked = false; updateLockUI();
     stopIdleTimer(); 
@@ -933,7 +929,6 @@ document.getElementById("btn-logout").onclick = () => {
     initApp(); 
 };
 
-// v1.5 FIX: Powrót ze skanera upewnia się, że wracamy na task-panel
 document.getElementById("btn-back-scan").onclick = () => { 
     stopIdleTimer();
     if (html5QrCode.isScanning) {
@@ -950,7 +945,6 @@ document.getElementById("btn-back-scan").onclick = () => {
     }
 };
 
-// v1.5 FIX: Manualne "Zakończ" wykorzystuje żelazną logikę czyszczenia
 document.getElementById("btn-finish-icon").onclick = () => { 
     if(confirm("Opuścić zamówienie?")) {
         exitToDashboard();
