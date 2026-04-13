@@ -18,7 +18,10 @@ let wakeLock = null;
 let idleTimer = null;
 let currentIdleContext = null; 
 
-let globalUtterance = null; 
+// ==========================================
+// TWARDE WSPARCIE MOWY DLA ANDROIDA (Rozwiązanie "Garbage Collection Bug")
+// ==========================================
+window.speechUtterances = []; // Globalna tablica ratująca mowę na Androidzie przed zniknięciem z pamięci
 let availableVoices = [];
 
 if ('speechSynthesis' in window) {
@@ -32,9 +35,9 @@ function speakVoice(text) {
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel(); 
         
-        globalUtterance = new SpeechSynthesisUtterance(text);
-        globalUtterance.rate = 1.1;
-        globalUtterance.lang = 'pl-PL'; 
+        let utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.1;
+        utterance.lang = 'pl-PL'; 
 
         if (availableVoices.length === 0) {
             availableVoices = window.speechSynthesis.getVoices();
@@ -45,11 +48,21 @@ function speakVoice(text) {
         );
 
         if (plVoice) {
-            globalUtterance.voice = plVoice;
+            utterance.voice = plVoice;
         }
 
+        // Dodanie do globalnej tablicy, aby system Android nie ubił mowy w połowie
+        window.speechUtterances.push(utterance);
+
+        utterance.onend = function() {
+            window.speechUtterances = window.speechUtterances.filter(u => u !== utterance);
+        };
+        utterance.onerror = function() {
+            window.speechUtterances = window.speechUtterances.filter(u => u !== utterance);
+        };
+
         setTimeout(() => {
-            window.speechSynthesis.speak(globalUtterance);
+            window.speechSynthesis.speak(utterance);
         }, 50);
     }
 }
@@ -74,9 +87,11 @@ function unlockAudioAPI() {
 }
 document.body.addEventListener('click', unlockAudioAPI, { once: true });
 document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
+// ==========================================
+
 
 // ==========================================
-// CZYSTY SKANER SPRZĘTOWY (AGRESYWNY WEDGE) v12.0
+// CZYSTY SKANER SPRZĘTOWY (Solidny Keyboard Wedge)
 // ==========================================
 let scanTimeout = null;
 
@@ -99,6 +114,7 @@ function initHardwareScanner() {
     const hiddenInput = document.getElementById('hidden-scanner-input');
     if (!hiddenInput) return;
 
+    // Metoda 1: Nasłuch na całe wklejone teksty (wiele skanerów robi to w 1ms)
     hiddenInput.addEventListener('input', (e) => {
         clearTimeout(scanTimeout);
         scanTimeout = setTimeout(() => {
@@ -110,6 +126,7 @@ function initHardwareScanner() {
         }, 100);
     });
 
+    // Metoda 2: Potwierdzenie enterem od skanera
     hiddenInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -122,11 +139,7 @@ function initHardwareScanner() {
         }
     });
 
-    // Agresywne zmuszanie Androida do trzymania focusu na polu!
-    hiddenInput.addEventListener('blur', () => {
-        setTimeout(maintainScannerFocus, 50);
-    });
-
+    // Bez agresywnych pętli "blur", reagujemy tylko na dotyk w ekran
     document.addEventListener('click', maintainScannerFocus);
     window.addEventListener('focus', maintainScannerFocus);
 }
@@ -181,7 +194,6 @@ function triggerTaskPanelVisual(type) {
 // ==========================================
 
 function getCurrentViewId() {
-    // Usunięto 'scanner-box' z listy widoków - nie istnieje
     const views = ['view-user-selection', 'view-orders-dashboard', 'task-panel'];
     return views.find(v => document.getElementById(v).style.display === 'flex');
 }
@@ -279,7 +291,6 @@ document.addEventListener('visibilitychange', () => {
     if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
 
-
 function isEanValid(ean) {
     if (ean === null || ean === undefined) return false;
     const str = String(ean).trim().toUpperCase();
@@ -287,6 +298,7 @@ function isEanValid(ean) {
     return true;
 }
 
+// Zmieniono aktualizację interfejsu na nowoczesny piktogram na dole
 function updateLockUI() {
     const btn = document.getElementById('btn-manual-lock');
     const iconClosed = document.getElementById('icon-lock-closed');
@@ -301,17 +313,21 @@ function updateLockUI() {
     }
 
     const manualAddBtn = document.getElementById('btn-manual-add');
-    const indicator = document.getElementById('hw-scan-indicator');
+    const scanPrompt = document.getElementById('hw-scan-prompt');
     
-    if (manualAddBtn && indicator) {
+    if (manualAddBtn && scanPrompt) {
         if (targetItem) {
             const hasEan = isEanValid(targetItem.ean);
             if (!hasEan) {
-                indicator.innerHTML = `<span style="color:var(--error); font-weight:800;">BRAK KODU EAN</span>`;
+                scanPrompt.classList.remove('active');
+                scanPrompt.classList.add('error');
+                scanPrompt.innerHTML = `<svg class="scan-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg><span>BRAK KODU EAN</span>`;
                 manualAddBtn.disabled = false; 
                 manualAddBtn.classList.add('force-unlocked'); 
             } else {
-                indicator.innerHTML = `<span style="color:var(--accent-green); font-weight:800;">🟢 CZYTNIK AKTYWNY</span>`;
+                scanPrompt.classList.remove('error');
+                scanPrompt.classList.add('active');
+                scanPrompt.innerHTML = `<svg class="scan-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h3"></path><path d="M20 7V4h-3"></path><path d="M4 17v3h3"></path><path d="M20 17v3h-3"></path><line x1="2" y1="12" x2="22" y2="12" stroke="var(--error)" stroke-width="2"></line><line x1="8" y1="8" x2="8" y2="16"></line><line x1="12" y1="8" x2="12" y2="16"></line><line x1="16" y1="8" x2="16" y2="16"></line></svg><span>UŻYJ PRZYCISKU SKANOWANIA</span>`;
                 manualAddBtn.disabled = !isManualUnlocked; 
                 manualAddBtn.classList.remove('force-unlocked');
             }
@@ -838,8 +854,6 @@ document.getElementById('btn-quick-max').onclick = () => updateDisplay(targetIte
 function showView(id, pushToHistory = true) {
     stopIdleTimer(); 
     const currentView = getCurrentViewId();
-    
-    // CZYSZCZENIE BŁĘDU: Usunięto kod odwołujący się do nieistniejącego html5QrCode
     
     ['view-user-selection', 'view-orders-dashboard', 'task-panel'].forEach(v => { 
         document.getElementById(v).style.display = (v === id) ? 'flex' : 'none'; 
