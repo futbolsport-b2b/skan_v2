@@ -1,11 +1,12 @@
-const CACHE_NAME = 'b2b-terminal-v8.0';
+const CACHE_NAME = 'b2b-terminal-v9.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
-  './logo.png'
+  './logo.png',
+  'https://unpkg.com/html5-qrcode'
 ];
 
 self.addEventListener('install', event => {
