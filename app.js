@@ -18,7 +18,9 @@ let wakeLock = null;
 let idleTimer = null;
 let currentIdleContext = null; 
 
-// Silnik TTS Android
+// ==========================================
+// TWARDE WSPARCIE MOWY DLA ANDROIDA
+// ==========================================
 window.speechUtterances = []; 
 let availableVoices = [];
 
@@ -85,39 +87,60 @@ function unlockAudioAPI() {
 document.body.addEventListener('click', unlockAudioAPI, { once: true });
 document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
 
-// ==========================================
-// NOWY GLOBALNY NASŁUCH SKANERA SPRZĘTOWEGO (BEZ INPUTA) - v14.0
-// ==========================================
-let barcodeBuffer = "";
-let lastKeyTime = Date.now();
 
-// Skrypt mierzy czas pomiędzy wciśnięciami. Jeśli znaki pojawiają się szybciej niż 30ms 
-// (człowiek tak szybko nie pisze), traktuje to jako skaner kodów kreskowych.
-document.addEventListener('keydown', (e) => {
-    // Jeśli z jakiegoś powodu użytkownik byłby w wyszukiwarce (np. na PC), ignorujemy
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+// ==========================================
+// POWRÓT DO DZIAŁAJĄCEJ LOGIKI SKANERA (Z wersji v7.0)
+// ==========================================
+let scanTimeout = null;
 
-    const currentTime = Date.now();
-    const timeDiff = currentTime - lastKeyTime;
-    
-    // Resetuj bufor, jeśli przerwa między znakami jest za długa (to znaczy, że ktoś puka w fizyczną klawiaturę)
-    if (timeDiff > 40) {
-        barcodeBuffer = "";
+function maintainScannerFocus() {
+    const hiddenInput = document.getElementById('hidden-scanner-input');
+    if (!hiddenInput) return;
+
+    const currentView = getCurrentViewId();
+    const qtyModalOpen = document.getElementById('qty-modal').style.display === 'flex';
+    const searchModalOpen = document.getElementById('search-modal').style.display === 'flex';
+
+    if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !isProcessing) {
+        hiddenInput.focus();
+    } else {
+        hiddenInput.blur();
     }
+}
 
-    if (e.key === 'Enter') {
-        if (barcodeBuffer.length > 0) {
+function initHardwareScanner() {
+    const hiddenInput = document.getElementById('hidden-scanner-input');
+    if (!hiddenInput) return;
+
+    // Przechwytywanie wklepanego tekstu (metoda v7.0)
+    hiddenInput.addEventListener('input', (e) => {
+        clearTimeout(scanTimeout);
+        scanTimeout = setTimeout(() => {
+            let code = hiddenInput.value.trim();
+            if (code.length > 0) {
+                hiddenInput.value = ""; 
+                handleHardwareScan(code);
+            }
+        }, 100);
+    });
+
+    // Przechwytywanie klawisza Enter (metoda v7.0)
+    hiddenInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
             e.preventDefault();
-            handleHardwareScan(barcodeBuffer);
-            barcodeBuffer = "";
+            clearTimeout(scanTimeout);
+            let code = hiddenInput.value.trim();
+            if (code.length > 0) {
+                hiddenInput.value = ""; 
+                handleHardwareScan(code);
+            }
         }
-    } else if (e.key.length === 1) { // Zbieraj tylko pojedyncze znaki (litery/cyfry)
-        barcodeBuffer += e.key;
-    }
-    
-    lastKeyTime = currentTime;
-});
+    });
 
+    // Agresywny powrót focusu przy każdym kliknięciu
+    document.addEventListener('click', maintainScannerFocus);
+    window.addEventListener('focus', maintainScannerFocus);
+}
 
 function handleHardwareScan(scannedCode) {
     const code = scannedCode.trim();
@@ -168,6 +191,7 @@ function triggerTaskPanelVisual(type) {
 }
 // ==========================================
 
+
 function getCurrentViewId() {
     const views = ['view-user-selection', 'view-orders-dashboard', 'task-panel'];
     return views.find(v => document.getElementById(v).style.display === 'flex');
@@ -176,6 +200,7 @@ function getCurrentViewId() {
 window.addEventListener('popstate', (event) => {
     if (document.getElementById('search-modal').style.display === 'flex') {
         document.getElementById('search-modal').style.display = 'none';
+        maintainScannerFocus(); 
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
@@ -183,6 +208,7 @@ window.addEventListener('popstate', (event) => {
     if (document.getElementById('qty-modal').style.display === 'flex') {
         document.getElementById('qty-modal').style.display = 'none';
         stopIdleTimer(); 
+        maintainScannerFocus(); 
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
@@ -271,7 +297,7 @@ function isEanValid(ean) {
     return true;
 }
 
-// v14.0 - Eleganckie, białe piktogramy skanera 
+// Elegancki, biały piktogram bez zieleni
 function updateLockUI() {
     const btn = document.getElementById('btn-manual-lock');
     const iconClosed = document.getElementById('icon-lock-closed');
@@ -338,6 +364,7 @@ document.getElementById('btn-refresh-orders').onclick = async function() {
 window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
+    initHardwareScanner(); // Aktywacja ukrytego pola 
     initApp();
 };
 
@@ -555,6 +582,7 @@ document.getElementById('np-search-del').onclick = (e) => {
 
 document.getElementById('btn-search-cancel').onclick = () => {
     document.getElementById('search-modal').style.display = 'none';
+    maintainScannerFocus(); 
 };
 
 document.getElementById('btn-search-ok').onclick = () => {
@@ -564,6 +592,7 @@ document.getElementById('btn-search-ok').onclick = () => {
     }
     document.getElementById('search-modal').style.display = 'none';
     renderOrdersFromGlobal();
+    maintainScannerFocus(); 
 };
 
 async function loadOrders() {
@@ -685,6 +714,7 @@ function setLoadingState(active) {
     const card = document.querySelector('.task-card'); 
     if (active) { card.classList.add('loading-mode'); isProcessing = true; } 
     else { card.classList.remove('loading-mode'); isProcessing = false; } 
+    maintainScannerFocus(); 
 }
 
 async function fetchNext(offset) {
@@ -750,6 +780,7 @@ function closeZoom() {
     const overlay = document.getElementById('image-zoom-overlay');
     overlay.style.opacity = '0';
     setTimeout(() => overlay.style.display = 'none', 300);
+    maintainScannerFocus(); 
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
@@ -774,6 +805,7 @@ function openNumpadModal() {
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
+    maintainScannerFocus(); 
 };
 
 function sendVal(q, mode) {
@@ -850,6 +882,8 @@ function showView(id, pushToHistory = true) {
     if (pushToHistory && currentView !== id) {
         history.pushState({ view: id }, "", "#" + id);
     }
+    
+    maintainScannerFocus(); 
 }
 
 function showError(m, muteVoice = false) {
