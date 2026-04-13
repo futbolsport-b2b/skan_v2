@@ -1,4 +1,4 @@
-/* v1.7 OPTIMIZED FOR TERMINAL MOBILE */
+/* v1.8 OPTIMIZED FOR TERMINAL MOBILE - NEW COLOR PALETTES & VIP GOLD */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -53,39 +53,50 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .user-tile-progress-text { position: absolute; top: 50%; font-size: 11px; font-weight: 900; z-index: 2; transition: all 0.6s ease; }
 .user-completed-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; margin-top: 2px;}
 
+/* ========================================================
+   ZŁOTY WYJĄTEK (Ł.C.) - EFEKT PREMIUM 3D
+   ======================================================== */
 .btn-user.vip-gold {
-    background: linear-gradient(135deg, #E6C27A 0%, #D4AF37 50%, #997A00 100%) !important;
+    background: linear-gradient(135deg, #D4AF37 0%, #FFF2CD 25%, #AA771C 50%, #E6C27A 75%, #8A5A19 100%) !important;
     border: 2px solid #FFDF73 !important;
-    box-shadow: 0 6px 15px rgba(212, 175, 55, 0.5) !important;
+    box-shadow: 0 8px 20px rgba(170, 119, 28, 0.6), inset 0 2px 8px rgba(255, 255, 255, 0.8) !important;
 }
 
+/* Wymuszenie idealnie czarnych napisów bez cienia */
 .btn-user.vip-gold .user-tile-initials,
 .btn-user.vip-gold .user-completed-qty,
 .btn-user.vip-gold .user-completed-label,
 .btn-user.vip-gold .user-tile-progress-text {
-    color: #111 !important;
+    color: #000000 !important;
     text-shadow: none !important;
 }
 
+/* Specjalny pasek postępu (Czarny wypełniacz na złotym the) */
 .btn-user.vip-gold .user-tile-progress-track {
-    border-color: #111 !important;
+    border-color: #000000 !important;
     background: rgba(0,0,0,0.1) !important;
+    box-shadow: none !important;
 }
-
 .btn-user.vip-gold .user-tile-progress-fill {
-    background-color: #111 !important;
+    background-color: #000000 !important;
 }
 
+/* Zmiana elementów ikonki (paczki) na czarne */
 .btn-user.vip-gold .user-box-icon svg polygon[fill="rgba(255,255,255,0.9)"] { fill: rgba(0,0,0,0.9) !important; }
 .btn-user.vip-gold .user-box-icon svg polygon[fill="rgba(255,255,255,0.6)"] { fill: rgba(0,0,0,0.7) !important; }
 .btn-user.vip-gold .user-box-icon svg polygon[fill="rgba(255,255,255,0.3)"] { fill: rgba(0,0,0,0.5) !important; }
-.btn-user.vip-gold .user-box-icon svg circle { fill: #111 !important; }
+.btn-user.vip-gold .user-box-icon svg circle { fill: #000000 !important; }
 .btn-user.vip-gold .user-box-icon svg path { stroke: #D4AF37 !important; }
 
+/* Złoty metaliczny napis w panelu nawigacji */
 #display-user-name.vip-gold-text {
-    color: #D4AF37 !important;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    background: linear-gradient(135deg, #E6C27A 0%, #FFF2CD 30%, #AA771C 70%, #8A5A19 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    font-weight: 900;
 }
+/* ======================================================== */
 
 .loader-container { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; gap: 15px; }
 .modern-spinner { width: 40px; height: 40px; border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; }
