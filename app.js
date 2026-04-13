@@ -5,27 +5,104 @@ let currentUser = null, currentOrderID = null, targetItem = null;
 let currentOffset = 0, currentInputValue = "0", isProcessing = false; 
 let isManualUnlocked = sessionStorage.getItem('manualUnlock') === 'true'; 
 
-let isFirstScanPerOrder = true; 
-
 let globalOrders = []; 
 let activeDashboardTab = 'todo'; 
 
 let activeSearchQuery = "";
 let tempSearchQuery = "";
 
-// Czysta mapa kolorów
 let userColorsMap = {}; 
 
-const html5QrCode = new Html5Qrcode("reader");
-
+// Usunięto obiekty kamery HTML5QrCode
 let audioCtx = null;
 let wakeLock = null;
 
 let idleTimer = null;
 let currentIdleContext = null; 
 
+// ==========================================
+// GLOBALNY NASŁUCH SKANERA SPRZĘTOWEGO (NEWLAND)
+// ==========================================
+let barcodeBuffer = "";
+let barcodeTimeout = null;
+
+document.addEventListener('keydown', (e) => {
+    // Zapobiegamy przechwyceniu, jeśli użytkownik kliknąłby w jakieś pole tekstowe (chociaż ich nie mamy)
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    // Skaner sprzętowy wysyła klawisz "Enter" po zeskanowaniu kodu
+    if (e.key === 'Enter' && barcodeBuffer.length > 0) {
+        handleHardwareScan(barcodeBuffer);
+        barcodeBuffer = "";
+        return;
+    }
+
+    // Zbieramy tylko proste znaki (litery, cyfry)
+    if (e.key.length === 1) {
+        barcodeBuffer += e.key;
+        // Skanery wklepują tekst bardzo szybko (< 20ms na znak). Jeśli nastąpi pauza > 100ms, to znaczy że to nie skaner
+        clearTimeout(barcodeTimeout);
+        barcodeTimeout = setTimeout(() => {
+            barcodeBuffer = ""; 
+        }, 100); 
+    }
+});
+
+function handleHardwareScan(scannedCode) {
+    const code = scannedCode.trim();
+    if (!code) return;
+
+    // Reagujemy na skanowanie TYLKO w widoku konkretnego produktu
+    if (getCurrentViewId() !== 'task-panel') return;
+    
+    // Ignorujemy skanowanie, jeśli otwarty jest wpis ręczny, wyszukiwarka lub trwa zapis
+    if (document.getElementById('qty-modal').style.display === 'flex' || 
+        document.getElementById('search-modal').style.display === 'flex' ||
+        isProcessing) {
+        return;
+    }
+
+    if (!targetItem) return;
+
+    if (code === String(targetItem.ean)) {
+        stopIdleTimer();
+        playSound('success');
+        triggerTaskPanelVisual('success');
+        
+        setTimeout(() => {
+            if (targetItem.pozostalo > 1) {
+                openNumpadModal();
+            } else {
+                sendVal(1, "scan"); // Bezpośredni zapis
+            }
+        }, 300);
+    } else {
+        stopIdleTimer();
+        playSound('error');
+        triggerTaskPanelVisual('error');
+        showError("BŁĘDNY PRODUKT!", true);
+        
+        setTimeout(() => {
+            startIdleTimer('scan');
+        }, 2000);
+    }
+}
+
+// Wizualny błysk ekranu (ramki karty) zamiast nakładki kamery
+function triggerTaskPanelVisual(type) {
+    const card = document.getElementById("main-task-card");
+    if(card) {
+        card.classList.remove('scan-success', 'scan-error'); 
+        void card.offsetWidth; // reset animacji
+        card.classList.add(type === 'success' ? 'scan-success' : 'scan-error');
+        setTimeout(() => { card.classList.remove('scan-success', 'scan-error'); }, 800); 
+    }
+}
+// ==========================================
+
+
 function getCurrentViewId() {
-    const views = ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'];
+    const views = ['view-user-selection', 'view-orders-dashboard', 'task-panel'];
     return views.find(v => document.getElementById(v).style.display === 'flex');
 }
 
@@ -39,10 +116,6 @@ window.addEventListener('popstate', (event) => {
     if (document.getElementById('qty-modal').style.display === 'flex') {
         document.getElementById('qty-modal').style.display = 'none';
         stopIdleTimer(); 
-        const hasEan = isEanValid(targetItem ? targetItem.ean : null);
-        if(document.getElementById('scanner-box').style.display !== 'none' && hasEan) {
-            startScannerView(); 
-        }
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
     }
@@ -59,12 +132,6 @@ window.addEventListener('popstate', (event) => {
     const targetView = state.view;
     const currentView = getCurrentViewId();
 
-    if (currentView === 'scanner-box' && targetView === 'task-panel') {
-        document.getElementById("btn-back-scan").click();
-        return;
-    }
-
-    // Usunięto denerwujące potwierdzenie przy powrocie
     if (currentView === 'task-panel' && targetView === 'view-orders-dashboard') {
         exitToDashboard();
         return;
@@ -92,7 +159,7 @@ function startIdleTimer(context) {
     stopIdleTimer(); 
     currentIdleContext = context;
     idleTimer = setTimeout(() => {
-        if (currentIdleContext === 'scan') speakVoice("Skanuj produkt");
+        if (currentIdleContext === 'scan') speakVoice("Użyj skanera");
         else if (currentIdleContext === 'numpad') speakVoice("Wprowadź ilość");
         startIdleTimer(currentIdleContext); 
     }, 10000); 
@@ -130,6 +197,7 @@ document.addEventListener('visibilitychange', () => {
     if (wakeLock === null && document.visibilityState === 'visible') requestWakeLock();
 });
 
+// Solidna inicjalizacja Audio i TTS po kliknięciu ekranu 
 function unlockAudioAPI() {
     if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -207,27 +275,20 @@ function updateLockUI() {
     }
 
     const manualAddBtn = document.getElementById('btn-manual-add');
-    const scanBtn = document.getElementById('btn-scan-item');
+    const indicator = document.getElementById('hw-scan-indicator');
     
-    if (manualAddBtn && scanBtn) {
+    if (manualAddBtn && indicator) {
         if (targetItem) {
             const hasEan = isEanValid(targetItem.ean);
             if (!hasEan) {
-                scanBtn.disabled = true;
-                scanBtn.innerText = "BRAK KODU EAN";
+                indicator.innerHTML = `<span style="color:var(--error); font-weight:800;">BRAK KODU EAN</span>`;
                 manualAddBtn.disabled = false; 
                 manualAddBtn.classList.add('force-unlocked'); 
             } else {
-                scanBtn.disabled = false;
-                scanBtn.innerText = "SKANUJ PRODUKT";
+                indicator.innerHTML = `<span style="color:var(--accent-green); font-weight:800;">🟢 CZYTNIK AKTYWNY</span>`;
                 manualAddBtn.disabled = !isManualUnlocked; 
                 manualAddBtn.classList.remove('force-unlocked');
             }
-        } else {
-            scanBtn.disabled = false;
-            scanBtn.innerText = "SKANUJ PRODUKT";
-            manualAddBtn.disabled = !isManualUnlocked;
-            manualAddBtn.classList.remove('force-unlocked');
         }
     }
 }
@@ -251,48 +312,38 @@ window.onload = () => {
     initApp();
 };
 
-// =========================================
-// ZMODYFIKOWANA PALETA KOLORÓW (v5.0)
-// Usunięto z palety męskiej wszelkie odcienie brązu/pomarańczy/złota, 
-// aby algorytm nigdy więcej nie przydzielił ich przypadkowo.
-// =========================================
 const MALE_COLORS = [
-    { hue: 215, saturation: 85, lightness: 25 }, // Głęboki Granat
-    { hue: 350, saturation: 80, lightness: 25 }, // Ciemny Karmazyn (Bordo)
-    { hue: 140, saturation: 75, lightness: 20 }, // Leśna Zieleń
-    { hue: 270, saturation: 65, lightness: 28 }, // Ciemny Bakłażan
-    { hue: 195, saturation: 90, lightness: 22 }, // Ciemny Błękit / Morski (ZASTĘPUJE BRĄZ!)
-    { hue: 230, saturation: 70, lightness: 35 }, // Przygaszony Indygo
-    { hue: 0,   saturation: 0,  lightness: 20 }, // Grafit (Ciemno-szary)
-    { hue: 170, saturation: 80, lightness: 20 }  // Ciemny Szmaragd
+    { hue: 215, saturation: 85, lightness: 25 }, 
+    { hue: 350, saturation: 80, lightness: 25 }, 
+    { hue: 140, saturation: 75, lightness: 20 }, 
+    { hue: 270, saturation: 65, lightness: 28 }, 
+    { hue: 195, saturation: 90, lightness: 22 }, 
+    { hue: 230, saturation: 70, lightness: 35 }, 
+    { hue: 0,   saturation: 0,  lightness: 20 }, 
+    { hue: 170, saturation: 80, lightness: 20 }  
 ];
 
 const FEMALE_COLORS = [
-    { hue: 340, saturation: 70, lightness: 60 }, // Pudrowy Róż
-    { hue: 280, saturation: 55, lightness: 60 }, // Lawenda
-    { hue: 15,  saturation: 80, lightness: 60 }, // Brzoskwinia
-    { hue: 170, saturation: 60, lightness: 50 }, // Świeża Mięta
-    { hue: 200, saturation: 75, lightness: 60 }, // Błękit Nieba
-    { hue: 350, saturation: 75, lightness: 65 }  // Delikatny Koral
+    { hue: 340, saturation: 70, lightness: 60 }, 
+    { hue: 280, saturation: 55, lightness: 60 }, 
+    { hue: 15,  saturation: 80, lightness: 60 }, 
+    { hue: 170, saturation: 60, lightness: 50 }, 
+    { hue: 200, saturation: 75, lightness: 60 }, 
+    { hue: 350, saturation: 75, lightness: 65 }  
 ];
 
-// Oczyszczony ze wszystkich wyjątków algorytm przydzielania kolorów
 function getColorComponents(name) {
     if (!name) return MALE_COLORS[0];
     const cleanName = String(name).trim().toUpperCase();
 
     const firstName = cleanName.split(/\s+/)[0];
-    // Sprawdzamy płeć (Wyjątek dla Kuby i Barnaby zostaje, bo to imiona męskie)
     const isFemale = firstName.endsWith('A') && firstName !== "KUBA" && firstName !== "BARNABA";
-
     const palette = isFemale ? FEMALE_COLORS : MALE_COLORS;
 
-    // Matematyczny algorytm stałego hashowania
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    
     return palette[Math.abs(hash) % palette.length];
 }
 
@@ -355,9 +406,8 @@ function renderUsers(users) {
         
         const initials = window.userInitialsMap[u.name] || "??";
         
-        // POBIERANIE KOLORU W 100% CZYSTO I RÓWNO DLA KAŻDEGO
         const colorComp = getColorComponents(u.name);
-        userColorsMap[u.name] = colorComp;
+        userColorsMap[u.name] = colorComp; 
         
         const baseColor = `hsl(${colorComp.hue}, ${colorComp.saturation}%, ${colorComp.lightness}%)`;
         const progressFillColor = `hsl(${colorComp.hue}, ${colorComp.saturation + 10}%, ${Math.max(20, colorComp.lightness - 15)}%)`;
@@ -367,34 +417,45 @@ function renderUsers(users) {
         const isLow = u.progress < 15;
         const textLeft = isLow ? `calc(${u.progress}% + 6px)` : `calc(${u.progress}% - 6px)`;
         const textTransform = isLow ? `translate(0, -50%)` : `translate(-100%, -50%)`;
+
+        const initialsColor = "#ffffff";
+        const qtyColor = "#ffffff";
+        const labelColor = "rgba(255,255,255,0.9)";
         const textColor = isLow ? baseColor : "#ffffff";
+        const progressTrackBg = "#ffffff";
+        const progressFillBg = progressFillColor;
+        const iconMain = "rgba(255,255,255,0.9)";
+        const iconSec = "rgba(255,255,255,0.6)";
+        const iconThird = "rgba(255,255,255,0.3)";
+        const iconCircle = "#ffffff";
+        const iconStroke = baseColor;
 
         btn.innerHTML = `
             <div class="user-tile-top">
-                <div class="user-tile-initials" style="color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${initials}</div>
+                <div class="user-tile-initials" style="color: ${initialsColor} !important; text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;">${initials}</div>
             </div>
             
             <div class="user-tile-bottom">
                 <div class="user-completed-row">
                     <div class="user-box-icon">
                         <svg width="26" height="26" viewBox="0 0 24 24">
-                          <polygon points="12,3 3,8 12,13 21,8" fill="rgba(255,255,255,0.9)"/>
-                          <polygon points="3,9 3,18 12,23 12,14" fill="rgba(255,255,255,0.6)"/>
-                          <polygon points="21,9 21,18 12,23 12,14" fill="rgba(255,255,255,0.3)"/>
-                          <circle cx="18" cy="18" r="6" fill="#ffffff" />
-                          <path d="M15.5 18l1.5 1.5 3-3" stroke="${baseColor}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                          <polygon points="12,3 3,8 12,13 21,8" fill="${iconMain}"/>
+                          <polygon points="3,9 3,18 12,23 12,14" fill="${iconSec}"/>
+                          <polygon points="21,9 21,18 12,23 12,14" fill="${iconThird}"/>
+                          <circle cx="18" cy="18" r="6" fill="${iconCircle}" />
+                          <path d="M15.5 18l1.5 1.5 3-3" stroke="${iconStroke}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                     </div>
-                    <div class="user-completed-qty" style="color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${u.completed}</div>
+                    <div class="user-completed-qty" style="color: ${qtyColor} !important; text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;">${u.completed}</div>
                 </div>
 
                 <div class="user-tile-progress-container">
-                    <div class="user-tile-progress-track" style="background: #ffffff; border-color: #ffffff;">
-                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillColor};"></div>
-                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor}; text-shadow: none;">${u.progress}%</div>
+                    <div class="user-tile-progress-track" style="background: ${progressTrackBg}; border-color: #ffffff;">
+                        <div class="user-tile-progress-fill" style="width:${u.progress}%; background-color: ${progressFillBg};"></div>
+                        <div class="user-tile-progress-text" style="left: ${textLeft}; transform: ${textTransform}; color: ${textColor} !important; text-shadow: none !important;">${u.progress}%</div>
                     </div>
                 </div>
-                <div class="user-completed-label" style="color: rgba(255,255,255,0.9); text-shadow: none;">ZREALIZOWANO DZIŚ</div>
+                <div class="user-completed-label" style="color: ${labelColor} !important; text-shadow: none !important;">ZREALIZOWANO DZIŚ</div>
             </div>
         `;
         
@@ -427,8 +488,6 @@ function selectUser(user) {
     switchTab('todo'); 
     showView('view-orders-dashboard'); 
     loadOrders();
-
-    Html5Qrcode.getCameras().then(devices => {}).catch(err => {});
 }
 
 function switchTab(tab) {
@@ -647,6 +706,10 @@ async function fetchNext(offset) {
             }
             updateLockUI();
             setLoadingState(false);
+            
+            // Dajemy czas na reakcję i startujemy cichy timer gotowości do sprzętowego skanu
+            setTimeout(() => { startIdleTimer('scan'); }, 500);
+
         } else {
             playSound('success'); 
             speakVoice("Zamówienie kompletne!"); 
@@ -673,104 +736,6 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-function triggerScanVisual(type) {
-    const sv = document.getElementById("scanner-box");
-    if(sv) {
-        sv.classList.remove('scan-success', 'scan-error'); void sv.offsetWidth; 
-        sv.classList.add(type === 'success' ? 'scan-success' : 'scan-error');
-        setTimeout(() => { sv.classList.remove('scan-success', 'scan-error'); }, 800); 
-    }
-}
-
-let torchOn = false;
-document.getElementById('btn-torch').onclick = async () => {
-    torchOn = !torchOn;
-    try { await html5QrCode.applyVideoConstraints({ advanced: [{ torch: torchOn }] }); document.getElementById('btn-torch').classList.toggle('active', torchOn); } 
-    catch(e) { torchOn = false; alert("Latarka niedostępna"); }
-};
-
-function startScannerView() {
-    showView('scanner-box');
-    document.getElementById("target-kat-val").innerText = targetItem.nr_kat;
-    document.getElementById("target-size-val").innerText = targetItem.rozmiar || "---";
-    document.getElementById("btn-torch").classList.remove('active');
-    torchOn = false; 
-
-    const windowWidth = window.innerWidth;
-    const boxWidth = Math.min(windowWidth * 0.85, 380); 
-    const boxHeight = 150; 
-    
-    const sv = document.getElementById("scanner-visual");
-    if(sv) {
-        sv.style.width = boxWidth + "px";
-        sv.style.height = boxHeight + "px";
-        sv.classList.remove('scanner-ready'); 
-    }
-
-    const config = {
-        fps: 15, 
-        qrbox: { width: boxWidth, height: boxHeight },
-        formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_8 ],
-        disableFlip: false
-    };
-
-    document.getElementById('scanner-loader').style.display = 'flex';
-    
-    let scanMatched = false; 
-    let errorCooldown = false; 
-
-    html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-        if (scanMatched || errorCooldown) return; 
-
-        if(text.trim() === String(targetItem.ean)) {
-            scanMatched = true;
-            stopIdleTimer(); 
-            
-            triggerScanVisual('success'); 
-            playSound('success');
-            
-            setTimeout(() => {
-                if (html5QrCode.isScanning) {
-                    html5QrCode.stop().then(() => {
-                        if(targetItem.pozostalo > 1) { 
-                            openNumpadModal();
-                        } else { sendVal(1, "scan"); } 
-                    }).catch(e => console.error("Kamera stop error", e));
-                }
-            }, 600); 
-            
-        } else { 
-            errorCooldown = true; 
-            stopIdleTimer(); 
-            
-            playSound('error');
-            triggerScanVisual('error');
-            showError("BŁĘDNY PRODUKT!", true); 
-            
-            setTimeout(() => {
-                errorCooldown = false;
-                if (document.getElementById('scanner-box').style.display !== 'none') {
-                    startIdleTimer('scan');
-                }
-            }, 2000); 
-        }
-    }).then(() => {
-        document.getElementById('scanner-loader').style.display = 'none';
-        if(sv) sv.classList.add('scanner-ready');
-        startIdleTimer('scan');
-    }).catch(err => {
-        document.getElementById('scanner-loader').style.display = 'none';
-        showError("Błąd kamery. Odśwież stronę.", true); 
-    });
-
-    isFirstScanPerOrder = false;
-}
-
-document.getElementById("btn-scan-item").onclick = () => {
-    if (!isEanValid(targetItem ? targetItem.ean : null)) return; 
-    startScannerView();
-};
-
 document.getElementById('btn-manual-add').onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     if (!isManualUnlocked && hasEan) return; 
@@ -786,19 +751,15 @@ function openNumpadModal() {
     document.getElementById("qty-remain").innerText = targetItem.pozostalo;
     document.getElementById("qty-modal").style.display = "flex";
     
-    if (document.getElementById('view-orders-dashboard').style.display === 'none' && html5QrCode.isScanning) {
-        speakVoice(`Pobierz ${targetItem.pozostalo} sztuk`);
-    }
-    
     startIdleTimer('numpad');
 }
 
 document.getElementById("btn-qty-cancel").onclick = () => {
     document.getElementById("qty-modal").style.display = "none";
     stopIdleTimer(); 
-    const hasEan = isEanValid(targetItem ? targetItem.ean : null);
-    if(document.getElementById('scanner-box').style.display !== 'none' && hasEan) {
-        startScannerView(); 
+    // Po zamknięciu pad'a, po prostu wracamy do trybu nasłuchu sprzętowego
+    if(getCurrentViewId() === 'task-panel') {
+        startIdleTimer('scan');
     }
 };
 
@@ -841,8 +802,8 @@ document.getElementById("btn-qty-ok").onclick = () => {
         if (document.getElementById("qty-modal").style.display === "flex") startIdleTimer('numpad'); 
         return; 
     }
-    const mode = document.getElementById('scanner-box').style.display === 'block' || html5QrCode.isScanning ? "scan" : "manual";
-    sendVal(val, mode); 
+    // Ponieważ klikamy w numpad, to zawsze jest "manual" chyba że z automata wywołane przez skaner sprzętowy
+    sendVal(val, "manual"); 
 };
 
 function updateDisplay(val) { 
@@ -863,12 +824,12 @@ function showView(id, pushToHistory = true) {
     stopIdleTimer(); 
     const currentView = getCurrentViewId();
     
-    ['view-user-selection', 'view-orders-dashboard', 'scanner-box', 'task-panel'].forEach(v => { 
+    ['view-user-selection', 'view-orders-dashboard', 'task-panel'].forEach(v => { 
         document.getElementById(v).style.display = (v === id) ? 'flex' : 'none'; 
     });
     
     const titleBar = document.getElementById('header-title-bar');
-    if (id === 'task-panel' || id === 'scanner-box') {
+    if (id === 'task-panel') {
         titleBar.style.display = 'none'; 
     } else {
         titleBar.style.display = 'flex'; 
@@ -906,23 +867,6 @@ document.getElementById("btn-logout").onclick = () => {
     initApp(); 
 };
 
-document.getElementById("btn-back-scan").onclick = () => { 
-    stopIdleTimer();
-    if (html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => {
-            showView('task-panel', false);
-            history.replaceState({ view: 'task-panel' }, "", "#task-panel");
-        }).catch(() => {
-            showView('task-panel', false);
-            history.replaceState({ view: 'task-panel' }, "", "#task-panel");
-        });
-    } else {
-        showView('task-panel', false);
-        history.replaceState({ view: 'task-panel' }, "", "#task-panel");
-    }
-};
-
-// Usunięto potwierdzenie "Opuścić zamówienie?" (Zgodnie z prośbą)
 document.getElementById("btn-finish-icon").onclick = () => { 
     exitToDashboard();
 };
