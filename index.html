@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v7.12</title>
+    <title>B2B TERMINAL v9.0</title>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="style.css?v=7.12">
-    <link rel="manifest" href="manifest.json?v=7.4">
+    <link rel="stylesheet" href="style.css?v=9.0">
+    <link rel="manifest" href="manifest.json?v=9.0">
     <meta name="theme-color" content="#000000">
 </head>
 <body class="ean-mode">
@@ -36,7 +36,7 @@
             <div class="header-title-bar" id="header-title-bar">
                 <img src="logo.png" alt="Logo" id="header-logo">
                 <div class="header-status-group">
-                    <span class="version-text">v7.12</span>
+                    <span class="version-text">v9.0</span>
                     <div class="ios-status-icons">
                         <svg id="icon-wifi" class="status-icon-svg" viewBox="0 0 24 24">
                             <path d="M12 21l-12-11.65c1.1-1.25 4.89-4.85 12-4.85s10.9 3.6 12 4.85l-12 11.65z"/>
@@ -132,11 +132,11 @@
                 <div class="task-card" id="main-task-card">
                     <div class="task-nav" id="task-nav-area">
                         <button id="btn-prev" class="btn-nav-squircle">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                         </button>
                         <span id="task-lp" class="task-lp-badge">--</span>
                         <button id="btn-next" class="btn-nav-squircle">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </button>
                     </div>
                     
@@ -153,6 +153,8 @@
                         </div>
                         <div class="task-qty-box"><span class="qty-label">DO POBRANIA</span><div id="task-qty">0</div></div>
                         <div id="task-notes-row" style="display:none;">UWAGI: <b id="task-notes">---</b></div>
+                        
+                        <div id="task-index-row" style="display:none;">Index: <b id="task-index">---</b></div>
                     </div>
                     
                     <div id="task-action-container" class="task-action-row">
@@ -237,6 +239,6 @@
         <input type="text" id="hidden-scanner-input" class="hidden-scanner" inputmode="none" autocomplete="off" />
 
     </div>
-    <script src="app.js?v=7.12"></script>
+    <script src="app.js?v=9.0"></script>
 </body>
 </html>
