@@ -20,7 +20,6 @@ let currentIdleContext = null;
 
 let scanTimeout = null;
 
-// NOWOŚĆ: Flaga określająca czy jesteśmy w trybie podglądu braków
 let isReviewMode = false;
 
 const CORRECT_PIN = "62030";
@@ -280,7 +279,7 @@ function showOrderCompleteAnimation() {
 }
 
 function startIdleTimer(context) {
-    if (isReviewMode) return; // W podglądzie braków nie ponaglamy
+    if (isReviewMode) return; 
     stopIdleTimer(); 
     currentIdleContext = context;
     idleTimer = setTimeout(() => {
@@ -811,7 +810,8 @@ function renderOrdersFromGlobal() {
         if (isCompleted && !hasBrak) {
             workloadText = 'Gotowe';
         } else if (isCompleted && hasBrak) {
-            workloadText = `<span style="color:var(--error);">Braki: ${o.brakPieces} szt.</span>`;
+            // Dodano text-shadow do wersji 7.7
+            workloadText = `<span style="color:var(--error); font-weight: 900; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Braki: ${o.brakPieces} szt.</span>`;
         } else {
             workloadText = `${o.remPositions} poz. (${o.remPieces} szt.)`;
         }
@@ -877,7 +877,6 @@ function startOrder(id, itemsCount) {
     fetchNext(0);
 }
 
-// NOWOŚĆ: Uruchomienie trybu przeglądu braków
 function startBrakReview(id) {
     currentOrderID = id;
     isReviewMode = true; 
@@ -959,7 +958,6 @@ async function fetchNext(offset) {
     } catch(e) { setLoadingState(false); showError("Błąd wyświetlania danych"); }
 }
 
-// NOWOŚĆ: Pobieranie tylko pozycji brakujących v7.6
 async function fetchBrakNext(offset) {
     stopIdleTimer(); showView('task-panel'); setLoadingState(true); 
     try {
@@ -1006,7 +1004,6 @@ async function fetchBrakNext(offset) {
             setLoadingState(false);
 
         } else {
-            // Jeżeli usunięto ostatni znacznik braku i nie ma już więcej B
             exitToDashboard();
         }
     } catch(e) { setLoadingState(false); showError("Błąd wyświetlania braków"); }
