@@ -21,7 +21,7 @@ let currentIdleContext = null;
 let scanTimeout = null;
 
 // ==========================================
-// SYSTEM AUTORYZACJI PIN v7.2
+// SYSTEM AUTORYZACJI PIN v7.3
 // ==========================================
 const CORRECT_PIN = "62030";
 let enteredPin = "";
@@ -71,21 +71,18 @@ function updatePinVisuals() {
 
 function verifyPin() {
     if (enteredPin === CORRECT_PIN) {
-        // Poprawny PIN
         document.getElementById('pin-dots').style.display = 'none';
         document.getElementById('pin-numpad').style.display = 'none';
         document.getElementById('pin-loader').style.display = 'flex';
         
         sessionStorage.setItem('devicePinAuthed', 'true');
         
-        // Czas na płynną animację i "połączenie z QNAP"
         setTimeout(() => {
             document.getElementById('main-header').style.display = 'flex';
             initApp();
         }, 1800);
         
     } else {
-        // Błędny PIN
         playSound('error');
         const dotsContainer = document.getElementById('pin-dots');
         dotsContainer.classList.add('shake');
@@ -998,7 +995,6 @@ document.getElementById("btn-logout").onclick = () => {
     document.getElementById("header-main-row").style.display = "none"; 
     document.getElementById("global-progress-bar").style.display = "none"; 
     
-    // Zamiast wracać do autoryzacji PIN, wylogowanie z użytkownika wraca do listy operatorów
     document.getElementById("user-list").innerHTML = `<div class="loader-container"><div class="modern-spinner"></div><div class="loader-text-small">Pobieranie Bazy...</div></div>`;
     showView('view-user-selection', false);
     initApp(); 
