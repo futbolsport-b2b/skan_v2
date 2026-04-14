@@ -1,4 +1,4 @@
-/* v7.6 OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH BRAK LOGIC & BIGGER UI */
+/* v7.7 OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH CONTRAST BRAK BAR */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -119,9 +119,15 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .order-baton { position: relative; background: var(--panel-bg); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 15px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; backdrop-filter: blur(10px); transition: transform 0.15s, opacity 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
 .order-baton:active { transform: scale(0.96); }
 
-/* NOWOŚĆ: Wygląd ukończonego zamówienia z brakami */
+/* UKOŃCZONE Z BRAKAMI */
 .order-baton.order-completed { opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
 .order-baton.order-completed-brak { opacity: 0.9; border: 1px solid var(--error); box-shadow: inset 0 0 15px rgba(255, 69, 58, 0.15); filter: none; cursor: pointer; }
+
+/* Nadpisanie paska postępu dla ukończonych z brakami (v7.7) */
+.order-completed-brak .order-details-progress-fill {
+    background: rgba(30, 30, 32, 0.95) !important;
+    border-right: 2px dashed var(--error);
+}
 
 .order-content { position: relative; width: 100%; display: flex; flex-direction: column; gap: 10px; }
 .order-header { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px;}
@@ -150,7 +156,7 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .order-percent { font-size: 16px; font-weight: 900; opacity: 0.9; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
 .order-completed-brak .order-percent { color: var(--error); }
 
-/* ELASTYCZNA KARTA PRODUKTU + LOGIKA BRAKÓW v7.6 */
+/* ELASTYCZNA KARTA PRODUKTU + LOGIKA BRAKÓW */
 .task-card { background: var(--panel-bg); border-radius: 24px; padding: 15px; border: 2px solid var(--border-subtle); margin: 10px; text-align: center; backdrop-filter: blur(10px); display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; box-sizing: border-box; transition: background 0.3s, border-color 0.2s, box-shadow 0.2s;}
 
 .task-card.is-brak { background: rgba(255, 69, 58, 0.15); border-color: var(--error); box-shadow: inset 0 0 20px rgba(255, 69, 58, 0.2); }
