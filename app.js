@@ -104,7 +104,7 @@ function maintainScannerFocus() {
     const searchModalOpen = document.getElementById('search-modal').style.display === 'flex';
     const brakModalOpen = document.getElementById('brak-modal').style.display === 'flex';
 
-    if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !brakModalOpen && !isProcessing && !isReviewMode) {
+    if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !brakModalOpen && !isProcessing) {
         hiddenInput.focus();
     } else {
         hiddenInput.blur();
@@ -143,7 +143,7 @@ function initHardwareScanner() {
 }
 
 function handleHardwareScan(scannedCode) {
-    if (isReviewMode) {
+    if (isReviewMode && targetItem && targetItem.status === 'B') {
         showError("PODGLĄD BRAKÓW - SKANOWANIE WYŁĄCZONE", true);
         return;
     }
@@ -428,7 +428,9 @@ function updateLockUI() {
     const beam = document.getElementById('neon-beam');
     
     if (manualAddBtn && labelText && beam) {
-        if (isReviewMode) {
+        // v7.9: Jeśli jesteśmy w trybie podglądu braków i pozycja nadal jest 'B' to blokujemy
+        // Jeśli pozycja nie jest 'B' (bo np. użytkownik przed chwilą kliknął TAK żeby uzupełnić), to aktywujemy
+        if (isReviewMode && targetItem && targetItem.status === 'B') {
             manualAddBtn.disabled = true;
             manualAddBtn.classList.remove('force-unlocked');
             labelText.innerText = "TRYB PODGLĄDU BRAKÓW";
@@ -454,6 +456,7 @@ function updateLockUI() {
                 labelText.style.color = "rgba(255,255,255,0.4)";
                 beam.style.animation = "camera-flash 1.5s infinite";
                 beam.style.stroke = "#ffffff";
+                beam.style.opacity = "1";
                 manualAddBtn.disabled = !isManualUnlocked; 
                 manualAddBtn.classList.remove('force-unlocked');
             }
@@ -1008,10 +1011,18 @@ async function fetchBrakNext(offset) {
     } catch(e) { setLoadingState(false); showError("Błąd wyświetlania braków"); }
 }
 
+// v7.9: Nowa logika obsługi modalu z uzupełnianiem braku
 document.getElementById('btn-mark-brak').onclick = () => {
     if (!targetItem) return;
-    const isCurrentlyBrak = (targetItem.status === 'B');
-    document.getElementById('brak-modal-text').innerText = isCurrentlyBrak ? "CZY USUNĄĆ ZNACZNIK BRAKU?" : "CZY OZNACZYĆ PRODUKT JAKO BRAK?";
+    
+    // Jeśli jesteśmy w trybie podglądu i towar ma aktualnie status 'B' to zmieniamy komunikat
+    if (isReviewMode && targetItem.status === 'B') {
+        document.getElementById('brak-modal-text').innerText = "CZY CHCESZ UZUPEŁNIĆ BRAK?";
+    } else {
+        const isCurrentlyBrak = (targetItem.status === 'B');
+        document.getElementById('brak-modal-text').innerText = isCurrentlyBrak ? "CZY USUNĄĆ ZNACZNIK BRAKU?" : "CZY OZNACZYĆ PRODUKT JAKO BRAK?";
+    }
+    
     document.getElementById('brak-modal').style.display = 'flex';
     stopIdleTimer();
 };
@@ -1027,12 +1038,23 @@ document.getElementById('btn-brak-confirm').onclick = () => {
     const newState = !isCurrentlyBrak;
     
     setLoadingState(true);
-    // Przesyłamy rowIndex do bezpiecznej edycji v7.8
     fetch(`${SCRIPT_URL}?action=toggle_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&state=${newState}`)
     .then(r=>r.json())
     .then(res => {
         if(res.status === 'success') {
-            if (isReviewMode) {
+            // v7.9: Uzupełnianie braku z poziomu podglądu braków
+            if (isReviewMode && isCurrentlyBrak) {
+                targetItem.status = 'W'; // udajemy lokalnie, że status to W, aby UI pozwoliło pracować
+                document.getElementById("main-task-card").classList.remove('is-brak');
+                setLoadingState(false);
+                
+                // Wymuszamy aktywację wprowadzania ręcznego dla wygody
+                isManualUnlocked = true;
+                sessionStorage.setItem('manualUnlock', 'true');
+                updateLockUI(); 
+                
+                speakVoice("Uzupełnianie braku aktywne");
+            } else if (isReviewMode) {
                 fetchBrakNext(currentOffset);
             } else {
                 fetchNext(currentOffset);
@@ -1096,7 +1118,6 @@ function sendVal(q, mode) {
     btnOk.classList.add("is-loading"); btnOk.disabled = true;
 
     let qInt = parseInt(q);
-    // Przesyłamy rowIndex do bezpiecznej weryfikacji v7.8
     fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&qty=${qInt}&mode=${mode}&action=validate`)
     .then(res => res.json())
     .then(data => {
@@ -1106,7 +1127,13 @@ function sendVal(q, mode) {
             document.getElementById("qty-modal").style.display = "none";
             if (qInt >= targetItem.pozostalo) speakVoice("Zatwierdzono pełne pobranie");
             else speakVoice(`Zatwierdzono ${qInt} sztuk`);
-            fetchNext(currentOffset);
+            
+            // v7.9: Jeśli zakończyliśmy sukcesem uzupełnienie w trybie braków, idziemy dalej po brakach
+            if (isReviewMode) {
+                fetchBrakNext(currentOffset);
+            } else {
+                fetchNext(currentOffset);
+            }
         } else {
             showError(data.msg);
         }
