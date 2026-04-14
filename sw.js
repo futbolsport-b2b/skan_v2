@@ -1,11 +1,11 @@
-const CACHE_NAME = 'b2b-terminal-v7.1';
+const CACHE_NAME = 'b2b-terminal-v7.2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
-  './logo.png'
+  './icon.png'
 ];
 
 self.addEventListener('install', event => {
