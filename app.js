@@ -1,4 +1,4 @@
-/* ver. 10.1a - OPTIMIZED FOR HARDWARE SCANNER TERMINALS */
+/* ver. 10.1b - OPTIMIZED FOR HARDWARE SCANNER TERMINALS (DOM Unlock Fix) */
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxv2lRkEquRb6ItSM5kiZuRZayAyHlVWtlsTiMIMaeKICuOjSSFRWElWP0AiMQ2P64M/exec";
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
@@ -436,6 +436,9 @@ function updateLockUI() {
     const beam = document.getElementById('neon-beam');
     
     if (manualAddBtn && labelText && beam) {
+        // v10.1b Zdejmujemy ewentualną blokadę dotyku dla pewności na start iteracji logicznej
+        manualAddBtn.style.pointerEvents = 'auto';
+
         if (isReviewMode && targetItem && (targetItem.status === 'B' || targetItem.status === 'BU')) {
             if (isActivelyReplenishing) {
                 labelText.innerText = "UZUPEŁNIANIE BRAKU";
@@ -443,11 +446,16 @@ function updateLockUI() {
                 beam.style.animation = "camera-flash 1.5s infinite";
                 beam.style.stroke = "var(--accent-yellow)";
                 beam.style.opacity = "1";
-                manualAddBtn.disabled = false; 
+                
+                // Agresywne zdejowanie zablokowania z drzewa DOM i wymuszenie aktywności
+                manualAddBtn.removeAttribute('disabled');
                 manualAddBtn.classList.add('force-unlocked'); 
             } else {
-                manualAddBtn.disabled = true;
+                // Twarde nałożenie blokady DOM
+                manualAddBtn.setAttribute('disabled', 'true');
+                manualAddBtn.style.pointerEvents = 'none';
                 manualAddBtn.classList.remove('force-unlocked');
+                
                 labelText.innerText = "TRYB PODGLĄDU BRAKÓW";
                 labelText.style.color = "var(--error)";
                 beam.style.animation = "none";
@@ -465,7 +473,9 @@ function updateLockUI() {
                 beam.style.animation = "none";
                 beam.style.stroke = "var(--error)";
                 beam.style.opacity = "0.5";
-                manualAddBtn.disabled = false; 
+                
+                // Agresywne zdejowanie zablokowania z drzewa DOM
+                manualAddBtn.removeAttribute('disabled');
                 manualAddBtn.classList.add('force-unlocked'); 
             } else {
                 labelText.innerText = "UŻYJ PRZYCISKU SKANOWANIA";
@@ -473,7 +483,13 @@ function updateLockUI() {
                 beam.style.animation = "camera-flash 1.5s infinite";
                 beam.style.stroke = "#ffffff";
                 beam.style.opacity = "1";
-                manualAddBtn.disabled = !isManualUnlocked; 
+                
+                if (isManualUnlocked) {
+                    manualAddBtn.removeAttribute('disabled');
+                } else {
+                    manualAddBtn.setAttribute('disabled', 'true');
+                    manualAddBtn.style.pointerEvents = 'none';
+                }
                 manualAddBtn.classList.remove('force-unlocked');
             }
         }
@@ -1157,11 +1173,11 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
-/* v10.1a FIX: Force unlock manual keyboard during Brak Replenishment */
+/* v10.1b FIX: Force unlock manual keyboard during Brak Replenishment */
 document.getElementById('btn-manual-add').onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
     
-    // Logic: Enable if manually unlocked OR if item has no EAN OR if we are actively fixing a shortage
+    // Zdejmujemy ewentualne ostre blokady z logiki jeśli spełniony jest warunek do użycia numpada
     const canUseManualInput = isManualUnlocked || !hasEan || isActivelyReplenishing;
     
     if (!canUseManualInput) return; 
