@@ -1,10 +1,11 @@
-const CACHE_NAME = 'b2b-terminal-v7.2';
+const CACHE_NAME = 'b2b-terminal-v7.3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
+  './logo.png',
   './icon.png'
 ];
 
