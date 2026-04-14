@@ -1,4 +1,4 @@
-/* v7.3 OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH IOS PIN & UI */
+/* v7.4 OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH IOS PIN & BIGGER ICONS */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -47,9 +47,9 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 
 #main-view { display: flex; flex-direction: column; flex-grow: 1; position: relative; overflow: hidden; }
 
-/* NOWOŚĆ: EKRAN LOGOWANIA PIN - iOS Style */
+/* EKRAN LOGOWANIA PIN - iOS Style */
 .pin-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center; }
-.pin-title { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 2px; margin-bottom: 25px; }
+.pin-title { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 2px; margin-bottom: 25px; transition: opacity 0.3s ease; }
 .pin-dots { display: flex; gap: 15px; margin-bottom: 40px; }
 .pin-dot { width: 16px; height: 16px; border: 1.5px solid rgba(255, 255, 255, 0.5); border-radius: 50%; transition: all 0.2s; background: transparent; }
 .pin-dot.filled { background-color: #fff; border-color: #fff; }
@@ -123,10 +123,20 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 
 #display-user-name { font-weight: 900; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;}
 
-.btn-icon-modern { background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+/* Powiększone ikony v7.4 */
+.btn-icon-modern { background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; position: relative;}
 .btn-icon-modern:active { transform: scale(0.9); }
-.lock-btn { width: 42px; height: 42px; }
 .lock-btn.unlocked { background: rgba(255, 214, 10, 0.2); border-color: var(--accent-yellow); color: var(--accent-yellow); }
+
+/* Klasy dla licznika Rate Limit (30s) */
+.btn-icon-modern.in-cooldown {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+    transform: none;
+}
+#refresh-counter { font-size: 20px; font-weight: 800; color: var(--accent-yellow); }
 
 .spin-anim svg { animation: spin-fast 1s linear infinite; }
 @keyframes spin-fast { 100% { transform: rotate(360deg); } }
