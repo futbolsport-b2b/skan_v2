@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyBBWkQsB8TEsk0HZVpjFFF9TC98ggPTDirZ6BbNKGqCjMcCYrhCzQ-8VlO5UaGwt27/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxv2lRkEquRb6ItSM5kiZuRZayAyHlVWtlsTiMIMaeKICuOjSSFRWElWP0AiMQ2P64M/exec";
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -22,6 +22,10 @@ let scanTimeout = null;
 
 let isReviewMode = false;
 let isActivelyReplenishing = false; 
+
+// V10.0: Zmienna sterująca głosem (Domyślnie włączone - false)
+// Przekreślony głośnik = muted. Jeśli chcesz, aby przy pierwszym uruchomieniu był wyciszony, daj true.
+let isSpeechMuted = true; 
 
 const CORRECT_PIN = "62030";
 let enteredPin = "";
@@ -363,7 +367,7 @@ function unlockAudioAPI() {
     source.connect(audioCtx.destination);
     source.start(0);
 
-    if ('speechSynthesis' in window) {
+    if ('speechSynthesis' in window && !isSpeechMuted) {
         let u = new SpeechSynthesisUtterance('');
         u.volume = 0;
         window.speechSynthesis.speak(u);
@@ -373,6 +377,7 @@ document.body.addEventListener('click', unlockAudioAPI, { once: true });
 document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
 
 function speakVoice(text) {
+    if (isSpeechMuted) return; // v10.0: Blokada gdy wyciszone
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel(); 
         const utterance = new SpeechSynthesisUtterance(text);
@@ -481,6 +486,24 @@ document.getElementById('btn-manual-lock').onclick = function() {
     sessionStorage.setItem('manualUnlock', isManualUnlocked);
     updateLockUI();
     if (isManualUnlocked) speakVoice("Tryb ręcznego wprowadzania Aktywny");
+};
+
+// V10.0 LOGIKA GŁOŚNIKA
+document.getElementById('btn-mute-toggle').onclick = function() {
+    isSpeechMuted = !isSpeechMuted;
+    const iconOff = document.getElementById('icon-speaker-off');
+    const iconOn = document.getElementById('icon-speaker-on');
+    
+    if (isSpeechMuted) {
+        iconOff.style.display = 'block';
+        iconOn.style.display = 'none';
+        this.classList.remove('unlocked'); 
+    } else {
+        iconOff.style.display = 'none';
+        iconOn.style.display = 'block';
+        this.classList.add('unlocked');
+        speakVoice("Głos aktywowany"); 
+    }
 };
 
 let refreshCooldownTimer = null;
@@ -934,7 +957,6 @@ async function fetchNext(offset) {
 
             if (targetItem.status === 'B' || targetItem.status === 'BU') {
                 card.classList.add('is-brak');
-                // v9.0 WERSJA: Pokaż Index na czerwonej karcie
                 if (targetItem.index_val && targetItem.index_val !== "---" && targetItem.index_val !== "") {
                     document.getElementById("task-index").innerText = targetItem.index_val;
                     indexRow.style.display = "block";
@@ -943,7 +965,7 @@ async function fetchNext(offset) {
                 }
             } else {
                 card.classList.remove('is-brak');
-                indexRow.style.display = "none"; // Zwykłe skanowanie = ukryty index
+                indexRow.style.display = "none"; 
             }
 
             const qtyElem = document.getElementById("task-qty"), notesRow = document.getElementById("task-notes-row");
@@ -1004,7 +1026,6 @@ async function fetchBrakNext(offset) {
 
             if (targetItem.status === 'B' || targetItem.status === 'BU') {
                 card.classList.add('is-brak'); 
-                // v9.0 WERSJA: Pokaż Index na czerwonej karcie
                 if (targetItem.index_val && targetItem.index_val !== "---" && targetItem.index_val !== "") {
                     document.getElementById("task-index").innerText = targetItem.index_val;
                     indexRow.style.display = "block";
@@ -1151,13 +1172,15 @@ document.getElementById("btn-qty-cancel").onclick = () => {
 function sendVal(q, mode) {
     stopIdleTimer(); 
     const btnOk = document.getElementById("btn-qty-ok");
-    btnOk.classList.add("is-loading"); btnOk.disabled = true;
+    
+    // V10.0 Usunięto dodawanie klasy 'is-loading' do uniknięcia zawieszonej animacji
+    btnOk.disabled = true;
 
     let qInt = parseInt(q);
     fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&qty=${qInt}&mode=${mode}&action=validate`)
     .then(res => res.json())
     .then(data => {
-        btnOk.classList.remove("is-loading"); btnOk.disabled = false;
+        btnOk.disabled = false;
         
         if(data.status === "success") {
             document.getElementById("qty-modal").style.display = "none";
@@ -1174,7 +1197,7 @@ function sendVal(q, mode) {
         }
     })
     .catch(() => {
-        btnOk.classList.remove("is-loading"); btnOk.disabled = false;
+        btnOk.disabled = false;
         showError("Błąd zapisu danych!");
     });
 }
