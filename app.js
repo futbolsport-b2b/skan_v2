@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzL04PTWLIlLfWxJx1i0Dg-nBPQ_M9S8sb0uShPjblns89ies7w_77ZS6VTSvUsUXkn/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyHWXy10w2EwUsoAf96splN4QipnB4TVIC-F730GsEkiKrvje7GDVVZ_Rk_1HqIL8gO/exec";
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -20,9 +20,6 @@ let currentIdleContext = null;
 
 let scanTimeout = null;
 
-// ==========================================
-// SYSTEM AUTORYZACJI PIN v7.4
-// ==========================================
 const CORRECT_PIN = "62030";
 let enteredPin = "";
 
@@ -73,7 +70,7 @@ function verifyPin() {
     if (enteredPin === CORRECT_PIN) {
         document.getElementById('pin-dots').style.display = 'none';
         document.getElementById('pin-numpad').style.display = 'none';
-        document.getElementById('pin-title').style.display = 'none'; // Ukrywamy napis PODAJ PIN
+        document.getElementById('pin-title').style.display = 'none'; 
         document.getElementById('pin-loader').style.display = 'flex';
         
         sessionStorage.setItem('devicePinAuthed', 'true');
@@ -95,7 +92,6 @@ function verifyPin() {
         }, 500);
     }
 }
-// ==========================================
 
 function maintainScannerFocus() {
     const hiddenInput = document.getElementById('hidden-scanner-input');
@@ -104,8 +100,9 @@ function maintainScannerFocus() {
     const currentView = getCurrentViewId();
     const qtyModalOpen = document.getElementById('qty-modal').style.display === 'flex';
     const searchModalOpen = document.getElementById('search-modal').style.display === 'flex';
+    const brakModalOpen = document.getElementById('brak-modal').style.display === 'flex';
 
-    if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !isProcessing) {
+    if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !brakModalOpen && !isProcessing) {
         hiddenInput.focus();
     } else {
         hiddenInput.blur();
@@ -151,6 +148,7 @@ function handleHardwareScan(scannedCode) {
     
     if (document.getElementById('qty-modal').style.display === 'flex' || 
         document.getElementById('search-modal').style.display === 'flex' ||
+        document.getElementById('brak-modal').style.display === 'flex' ||
         isProcessing) {
         return;
     }
@@ -207,6 +205,13 @@ window.addEventListener('popstate', (event) => {
     if (document.getElementById('qty-modal').style.display === 'flex') {
         document.getElementById('qty-modal').style.display = 'none';
         stopIdleTimer(); 
+        maintainScannerFocus(); 
+        history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
+        return;
+    }
+    
+    if (document.getElementById('brak-modal').style.display === 'flex') {
+        document.getElementById('brak-modal').style.display = 'none';
         maintainScannerFocus(); 
         history.pushState({ view: getCurrentViewId() }, "", "#" + getCurrentViewId());
         return;
@@ -423,8 +428,8 @@ function updateLockUI() {
                 manualAddBtn.classList.add('force-unlocked'); 
             } else {
                 labelText.innerText = "UŻYJ PRZYCISKU SKANOWANIA";
-                labelText.style.color = "var(--accent-green)";
-                beam.style.stroke = "var(--accent-green)";
+                labelText.style.color = "rgba(255,255,255,0.3)";
+                beam.style.stroke = "#ffffff";
                 manualAddBtn.disabled = !isManualUnlocked; 
                 manualAddBtn.classList.remove('force-unlocked');
             }
@@ -439,20 +444,15 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręcznego wprowadzania Aktywny");
 };
 
-// ==============================================================
-// MECHANIZM BLOKADY ODŚWIEŻANIA (RATE LIMIT 30s) v7.4
-// ==============================================================
 let refreshCooldownTimer = null;
 
 document.getElementById('btn-refresh-orders').onclick = async function() {
     if (this.classList.contains('in-cooldown') || this.classList.contains('spin-anim')) return;
 
-    // Faza 1: Kręcenie / Pobieranie
     this.classList.add('spin-anim');
     await loadOrders();
     this.classList.remove('spin-anim');
 
-    // Faza 2: Zablokowanie przycisku na 30 sekund
     this.classList.add('in-cooldown');
     const svg = document.getElementById('refresh-svg');
     const counter = document.getElementById('refresh-counter');
@@ -476,8 +476,6 @@ document.getElementById('btn-refresh-orders').onclick = async function() {
         }
     }, 1000);
 };
-// ==============================================================
-
 
 window.onload = () => {
     updateNetworkStatus();
@@ -856,6 +854,13 @@ async function fetchNext(offset) {
             document.getElementById("task-kat").innerText = targetItem.nr_kat; 
             document.getElementById("task-size").innerText = targetItem.rozmiar || "---";
             
+            const card = document.getElementById("main-task-card");
+            if (targetItem.status === 'B') {
+                card.classList.add('is-brak');
+            } else {
+                card.classList.remove('is-brak');
+            }
+
             const qtyElem = document.getElementById("task-qty"), notesRow = document.getElementById("task-notes-row");
             qtyElem.innerText = targetItem.pozostalo;
             
@@ -863,6 +868,13 @@ async function fetchNext(offset) {
                 document.getElementById("task-notes").innerText = targetItem.uwagi; notesRow.style.display = "block"; qtyElem.style.color = "var(--error)"; 
             } else { notesRow.style.display = "none"; qtyElem.style.color = "var(--accent-green)"; }
             
+            const navArea = document.getElementById("task-nav-area");
+            if (data.total_items <= 1) {
+                navArea.style.visibility = 'hidden';
+            } else {
+                navArea.style.visibility = 'visible';
+            }
+
             const imgBox = document.getElementById("product-image-box"), imgElem = document.getElementById("task-img");
             imgElem.src = "";
             if(targetItem.nr_kat && targetItem.nr_kat !== "---") {
@@ -884,6 +896,42 @@ async function fetchNext(offset) {
         }
     } catch(e) { setLoadingState(false); showError("Błąd wyświetlania danych"); }
 }
+
+// LOGIKA NOWEGO PRZYCISKU BRAK v7.5
+document.getElementById('btn-mark-brak').onclick = () => {
+    if (!targetItem) return;
+    const isCurrentlyBrak = (targetItem.status === 'B');
+    document.getElementById('brak-modal-text').innerText = isCurrentlyBrak ? "CZY USUNĄĆ ZNACZNIK BRAKU?" : "CZY OZNACZYĆ PRODUKT JAKO BRAK?";
+    document.getElementById('brak-modal').style.display = 'flex';
+    stopIdleTimer();
+};
+
+document.getElementById('btn-brak-cancel').onclick = () => {
+    document.getElementById('brak-modal').style.display = 'none';
+    maintainScannerFocus();
+};
+
+document.getElementById('btn-brak-confirm').onclick = () => {
+    document.getElementById('brak-modal').style.display = 'none';
+    const isCurrentlyBrak = (targetItem.status === 'B');
+    const newState = !isCurrentlyBrak;
+    
+    setLoadingState(true);
+    fetch(`${SCRIPT_URL}?action=toggle_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&state=${newState}`)
+    .then(r=>r.json())
+    .then(res => {
+        if(res.status === 'success') {
+            fetchNext(currentOffset);
+        } else {
+            setLoadingState(false);
+            showError(res.msg);
+        }
+    })
+    .catch(() => {
+        setLoadingState(false);
+        showError("BŁĄD POŁĄCZENIA");
+    });
+};
 
 let zoomTimeout = null;
 document.getElementById('task-img').onclick = function() {
