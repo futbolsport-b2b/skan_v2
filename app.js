@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXgiM0100tCAO-UqpkrSyEcW77D9kBqISWOrJih6nMKCpU-pm8PlbKDSKJ_41WOKQF/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVkzwf1HpWd7cbdjnjHFqlxHeQqLYUpfTyeahushgKXUbxdvT4yagwXuaZ8eHy7QA/exec";
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -104,7 +104,10 @@ function maintainScannerFocus() {
     const searchModalOpen = document.getElementById('search-modal').style.display === 'flex';
     const brakModalOpen = document.getElementById('brak-modal').style.display === 'flex';
 
-    if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !brakModalOpen && !isProcessing && !isReviewMode) {
+    // Scanner is blocked ONLY if in review mode AND the item is purely 'B' (waiting for action)
+    const isWaitingForBrakDecision = isReviewMode && targetItem && targetItem.status === 'B';
+
+    if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !brakModalOpen && !isProcessing && !isWaitingForBrakDecision) {
         hiddenInput.focus();
     } else {
         hiddenInput.blur();
@@ -428,6 +431,17 @@ function updateLockUI() {
     const beam = document.getElementById('neon-beam');
     
     if (manualAddBtn && labelText && beam) {
+        if (isReviewMode && targetItem && targetItem.status === 'BU') {
+            labelText.innerText = "UZUPEŁNIANIE BRAKU";
+            labelText.style.color = "var(--accent-yellow)";
+            beam.style.animation = "camera-flash 1.5s infinite";
+            beam.style.stroke = "var(--accent-yellow)";
+            beam.style.opacity = "1";
+            manualAddBtn.disabled = false; 
+            manualAddBtn.classList.add('force-unlocked'); 
+            return;
+        }
+
         if (isReviewMode && targetItem && targetItem.status === 'B') {
             manualAddBtn.disabled = true;
             manualAddBtn.classList.remove('force-unlocked');
@@ -975,7 +989,14 @@ async function fetchBrakNext(offset) {
             document.getElementById("task-size").innerText = targetItem.rozmiar || "---";
             
             const card = document.getElementById("main-task-card");
-            card.classList.add('is-brak'); 
+            // v7.11 Utrzymanie logiki wizualnej:
+            // Jeśli element jest w stanie 'B', wyświetlamy na czerwono.
+            // Jeśli element jest już w stanie 'BU' (uzupełniany), zdejmujemy czerwony kolor.
+            if (targetItem.status === 'B') {
+                card.classList.add('is-brak'); 
+            } else if (targetItem.status === 'BU') {
+                card.classList.remove('is-brak'); 
+            }
 
             const qtyElem = document.getElementById("task-qty"), notesRow = document.getElementById("task-notes-row");
             qtyElem.innerText = targetItem.pozostalo;
@@ -1014,6 +1035,8 @@ document.getElementById('btn-mark-brak').onclick = () => {
     
     if (isReviewMode && targetItem.status === 'B') {
         document.getElementById('brak-modal-text').innerText = "CZY CHCESZ UZUPEŁNIĆ BRAK?";
+    } else if (isReviewMode && targetItem.status === 'BU') {
+        document.getElementById('brak-modal-text').innerText = "CZY PRZERWAĆ UZUPEŁNIANIE (PRZYWRÓCIĆ BRAK)?";
     } else {
         const isCurrentlyBrak = (targetItem.status === 'B');
         document.getElementById('brak-modal-text').innerText = isCurrentlyBrak ? "CZY USUNĄĆ ZNACZNIK BRAKU?" : "CZY OZNACZYĆ PRODUKT JAKO BRAK?";
@@ -1030,16 +1053,28 @@ document.getElementById('btn-brak-cancel').onclick = () => {
 
 document.getElementById('btn-brak-confirm').onclick = () => {
     document.getElementById('brak-modal').style.display = 'none';
-    const isCurrentlyBrak = (targetItem.status === 'B');
-    const newState = !isCurrentlyBrak;
     
     setLoadingState(true);
-    fetch(`${SCRIPT_URL}?action=toggle_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&state=${newState}`)
+    let actionUrl = "";
+
+    if (isReviewMode && targetItem.status === 'B') {
+         // Inicjacja uzupełnienia
+         actionUrl = `${SCRIPT_URL}?action=replenish_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}`;
+    } else if (isReviewMode && targetItem.status === 'BU') {
+         // Powrót z uzupełniania do klasycznego braku
+         actionUrl = `${SCRIPT_URL}?action=toggle_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&state=true`;
+    } else {
+         // Zwykłe przełączanie B na normalnym zamówieniu
+         const newState = !(targetItem.status === 'B');
+         actionUrl = `${SCRIPT_URL}?action=toggle_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&state=${newState}`;
+    }
+
+    fetch(actionUrl)
     .then(r=>r.json())
     .then(res => {
         if(res.status === 'success') {
-            if (isReviewMode && isCurrentlyBrak) {
-                targetItem.status = 'W'; 
+            if (isReviewMode && targetItem.status === 'B') {
+                targetItem.status = 'BU'; 
                 document.getElementById("main-task-card").classList.remove('is-brak');
                 setLoadingState(false);
                 
