@@ -21,6 +21,7 @@ let currentIdleContext = null;
 let scanTimeout = null;
 
 let isReviewMode = false;
+let isActivelyReplenishing = false; // NOWOŚĆ v7.12 - flaga lokalnego uzupełniania
 
 const CORRECT_PIN = "62030";
 let enteredPin = "";
@@ -104,8 +105,8 @@ function maintainScannerFocus() {
     const searchModalOpen = document.getElementById('search-modal').style.display === 'flex';
     const brakModalOpen = document.getElementById('brak-modal').style.display === 'flex';
 
-    // Scanner is blocked ONLY if in review mode AND the item is purely 'B' (waiting for action)
-    const isWaitingForBrakDecision = isReviewMode && targetItem && targetItem.status === 'B';
+    // Jeśli jesteśmy w brakach, ale nie kliknęliśmy "B" by odblokować, nie skupiaj skanera
+    const isWaitingForBrakDecision = isReviewMode && !isActivelyReplenishing && targetItem && (targetItem.status === 'B' || targetItem.status === 'BU');
 
     if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !brakModalOpen && !isProcessing && !isWaitingForBrakDecision) {
         hiddenInput.focus();
@@ -146,8 +147,9 @@ function initHardwareScanner() {
 }
 
 function handleHardwareScan(scannedCode) {
-    if (isReviewMode && targetItem && targetItem.status === 'B') {
-        showError("PODGLĄD BRAKÓW - SKANOWANIE WYŁĄCZONE", true);
+    // Skanowanie zablokowane w trybie braków, chyba że operator kliknął "B" (isActivelyReplenishing = true)
+    if (isReviewMode && !isActivelyReplenishing && targetItem && (targetItem.status === 'B' || targetItem.status === 'BU')) {
+        showError("PODGLĄD BRAKÓW - ODBLOKUJ ABY SKANOWAĆ", true);
         return;
     }
 
@@ -255,6 +257,7 @@ window.addEventListener('popstate', (event) => {
 function exitToDashboard() {
     stopIdleTimer();
     isReviewMode = false;
+    isActivelyReplenishing = false;
     document.getElementById("header-main-row").style.display = "none";
     document.getElementById("global-progress-bar").style.display = "none";
     document.getElementById("order-val").style.color = "var(--accent-green)";
@@ -431,25 +434,25 @@ function updateLockUI() {
     const beam = document.getElementById('neon-beam');
     
     if (manualAddBtn && labelText && beam) {
-        if (isReviewMode && targetItem && targetItem.status === 'BU') {
-            labelText.innerText = "UZUPEŁNIANIE BRAKU";
-            labelText.style.color = "var(--accent-yellow)";
-            beam.style.animation = "camera-flash 1.5s infinite";
-            beam.style.stroke = "var(--accent-yellow)";
-            beam.style.opacity = "1";
-            manualAddBtn.disabled = false; 
-            manualAddBtn.classList.add('force-unlocked'); 
-            return;
-        }
-
-        if (isReviewMode && targetItem && targetItem.status === 'B') {
-            manualAddBtn.disabled = true;
-            manualAddBtn.classList.remove('force-unlocked');
-            labelText.innerText = "TRYB PODGLĄDU BRAKÓW";
-            labelText.style.color = "var(--error)";
-            beam.style.animation = "none";
-            beam.style.stroke = "var(--error)";
-            beam.style.opacity = "0.5";
+        // v7.12 - Logika wizualna uzupełniania braków
+        if (isReviewMode && targetItem && (targetItem.status === 'B' || targetItem.status === 'BU')) {
+            if (isActivelyReplenishing) {
+                labelText.innerText = "UZUPEŁNIANIE BRAKU";
+                labelText.style.color = "var(--accent-yellow)";
+                beam.style.animation = "camera-flash 1.5s infinite";
+                beam.style.stroke = "var(--accent-yellow)";
+                beam.style.opacity = "1";
+                manualAddBtn.disabled = false; 
+                manualAddBtn.classList.add('force-unlocked'); 
+            } else {
+                manualAddBtn.disabled = true;
+                manualAddBtn.classList.remove('force-unlocked');
+                labelText.innerText = "TRYB PODGLĄDU BRAKÓW";
+                labelText.style.color = "var(--error)";
+                beam.style.animation = "none";
+                beam.style.stroke = "var(--error)";
+                beam.style.opacity = "0.5";
+            }
             return;
         }
 
@@ -930,7 +933,7 @@ async function fetchNext(offset) {
             document.getElementById("task-size").innerText = targetItem.rozmiar || "---";
             
             const card = document.getElementById("main-task-card");
-            if (targetItem.status === 'B') {
+            if (targetItem.status === 'B' || targetItem.status === 'BU') {
                 card.classList.add('is-brak');
             } else {
                 card.classList.remove('is-brak');
@@ -974,6 +977,7 @@ async function fetchNext(offset) {
 
 async function fetchBrakNext(offset) {
     stopIdleTimer(); showView('task-panel'); setLoadingState(true); 
+    isActivelyReplenishing = false; // Reset przy ładowaniu nowej pozycji
     try {
         const res = await fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&action=get_brak&offset=${offset}`);
         const data = await res.json();
@@ -989,12 +993,10 @@ async function fetchBrakNext(offset) {
             document.getElementById("task-size").innerText = targetItem.rozmiar || "---";
             
             const card = document.getElementById("main-task-card");
-            // v7.11 Utrzymanie logiki wizualnej:
-            // Jeśli element jest w stanie 'B', wyświetlamy na czerwono.
-            // Jeśli element jest już w stanie 'BU' (uzupełniany), zdejmujemy czerwony kolor.
-            if (targetItem.status === 'B') {
+            // Przywrócenie blokady brakowej dla B i BU
+            if (targetItem.status === 'B' || targetItem.status === 'BU') {
                 card.classList.add('is-brak'); 
-            } else if (targetItem.status === 'BU') {
+            } else {
                 card.classList.remove('is-brak'); 
             }
 
@@ -1033,10 +1035,12 @@ async function fetchBrakNext(offset) {
 document.getElementById('btn-mark-brak').onclick = () => {
     if (!targetItem) return;
     
-    if (isReviewMode && targetItem.status === 'B') {
-        document.getElementById('brak-modal-text').innerText = "CZY CHCESZ UZUPEŁNIĆ BRAK?";
-    } else if (isReviewMode && targetItem.status === 'BU') {
-        document.getElementById('brak-modal-text').innerText = "CZY PRZERWAĆ UZUPEŁNIANIE (PRZYWRÓCIĆ BRAK)?";
+    if (isReviewMode) {
+        if (!isActivelyReplenishing) {
+            document.getElementById('brak-modal-text').innerText = "CZY CHCESZ UZUPEŁNIĆ BRAK?";
+        } else {
+            document.getElementById('brak-modal-text').innerText = "CZY PRZERWAĆ UZUPEŁNIANIE?";
+        }
     } else {
         const isCurrentlyBrak = (targetItem.status === 'B');
         document.getElementById('brak-modal-text').innerText = isCurrentlyBrak ? "CZY USUNĄĆ ZNACZNIK BRAKU?" : "CZY OZNACZYĆ PRODUKT JAKO BRAK?";
@@ -1054,49 +1058,39 @@ document.getElementById('btn-brak-cancel').onclick = () => {
 document.getElementById('btn-brak-confirm').onclick = () => {
     document.getElementById('brak-modal').style.display = 'none';
     
-    setLoadingState(true);
-    let actionUrl = "";
-
-    if (isReviewMode && targetItem.status === 'B') {
-         // Inicjacja uzupełnienia
-         actionUrl = `${SCRIPT_URL}?action=replenish_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}`;
-    } else if (isReviewMode && targetItem.status === 'BU') {
-         // Powrót z uzupełniania do klasycznego braku
-         actionUrl = `${SCRIPT_URL}?action=toggle_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&state=true`;
-    } else {
-         // Zwykłe przełączanie B na normalnym zamówieniu
-         const newState = !(targetItem.status === 'B');
-         actionUrl = `${SCRIPT_URL}?action=toggle_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&state=${newState}`;
-    }
-
-    fetch(actionUrl)
-    .then(r=>r.json())
-    .then(res => {
-        if(res.status === 'success') {
-            if (isReviewMode && targetItem.status === 'B') {
-                targetItem.status = 'BU'; 
-                document.getElementById("main-task-card").classList.remove('is-brak');
-                setLoadingState(false);
-                
-                isManualUnlocked = true;
-                sessionStorage.setItem('manualUnlock', 'true');
-                updateLockUI(); 
-                
-                speakVoice("Uzupełnianie braku aktywne");
-            } else if (isReviewMode) {
-                fetchBrakNext(currentOffset);
-            } else {
-                fetchNext(currentOffset);
-            }
+    if (isReviewMode) {
+        if (!isActivelyReplenishing) {
+            // Operator chce uzupełnić - odblokowujemy UI na zielono
+            isActivelyReplenishing = true;
+            document.getElementById("main-task-card").classList.remove('is-brak');
+            updateLockUI(); 
+            speakVoice("Uzupełnianie braku aktywne");
         } else {
-            setLoadingState(false);
-            showError(res.msg);
+            // Operator wycofał się z uzupełniania - przywracamy blokadę czerwoną
+            isActivelyReplenishing = false;
+            document.getElementById("main-task-card").classList.add('is-brak');
+            updateLockUI();
         }
-    })
-    .catch(() => {
-        setLoadingState(false);
-        showError("BŁĄD POŁĄCZENIA");
-    });
+    } else {
+        // Standardowe oznaczanie braków w normalnym zamówieniu
+        const isCurrentlyBrak = (targetItem.status === 'B');
+        const newState = !isCurrentlyBrak;
+        setLoadingState(true);
+        fetch(`${SCRIPT_URL}?action=toggle_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&state=${newState}`)
+        .then(r=>r.json())
+        .then(res => {
+            if(res.status === 'success') {
+                fetchNext(currentOffset);
+            } else {
+                setLoadingState(false);
+                showError(res.msg);
+            }
+        })
+        .catch(() => {
+            setLoadingState(false);
+            showError("BŁĄD POŁĄCZENIA");
+        });
+    }
 };
 
 let zoomTimeout = null;
