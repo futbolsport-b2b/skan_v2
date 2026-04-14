@@ -1,3 +1,4 @@
+/* ver. 10.1a - OPTIMIZED FOR HARDWARE SCANNER TERMINALS */
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxv2lRkEquRb6ItSM5kiZuRZayAyHlVWtlsTiMIMaeKICuOjSSFRWElWP0AiMQ2P64M/exec";
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
@@ -486,7 +487,6 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręcznego wprowadzania Aktywny");
 };
 
-// V10.0 LOGIKA GŁOŚNIKA
 document.getElementById('btn-mute-toggle').onclick = function() {
     isSpeechMuted = !isSpeechMuted;
     const iconOff = document.getElementById('icon-speaker-off');
@@ -1157,9 +1157,15 @@ function closeZoom() {
 }
 document.getElementById('image-zoom-overlay').onclick = closeZoom;
 
+/* v10.1a FIX: Force unlock manual keyboard during Brak Replenishment */
 document.getElementById('btn-manual-add').onclick = () => {
     const hasEan = isEanValid(targetItem ? targetItem.ean : null);
-    if (!isManualUnlocked && hasEan) return; 
+    
+    // Logic: Enable if manually unlocked OR if item has no EAN OR if we are actively fixing a shortage
+    const canUseManualInput = isManualUnlocked || !hasEan || isActivelyReplenishing;
+    
+    if (!canUseManualInput) return; 
+    
     speakVoice("Wprowadzanie ręczne");
     openNumpadModal();
 };
@@ -1181,12 +1187,10 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     maintainScannerFocus(); 
 };
 
-// V10.1: Szybki zapis bez kółka ładowania - wyraźny komunikat
 function sendVal(q, mode) {
     stopIdleTimer(); 
     const btnOk = document.getElementById("btn-qty-ok");
     
-    // V10.1 wizualne zablokowanie przycisku bez psującej się animacji
     btnOk.disabled = true;
     btnOk.classList.add("is-saving");
     const originalText = btnOk.innerText;
@@ -1305,11 +1309,7 @@ document.getElementById("btn-logout").onclick = () => {
 };
 
 document.getElementById("btn-finish-icon").onclick = () => { 
-    if (isReviewMode) {
-        exitToDashboard();
-    } else {
-        exitToDashboard();
-    }
+    exitToDashboard();
 };
 
 document.getElementById("btn-prev").onclick = () => { 
