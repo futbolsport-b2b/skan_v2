@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyHWXy10w2EwUsoAf96splN4QipnB4TVIC-F730GsEkiKrvje7GDVVZ_Rk_1HqIL8gO/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbws6A1TPzl01dpUmnd-nuR18AtphYPfUOLHO6cHMlEa3tjj-voiTV4DAjUnSJNlcoY/exec";
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -19,6 +19,9 @@ let idleTimer = null;
 let currentIdleContext = null; 
 
 let scanTimeout = null;
+
+// NOWOŚĆ: Flaga określająca czy jesteśmy w trybie podglądu braków
+let isReviewMode = false;
 
 const CORRECT_PIN = "62030";
 let enteredPin = "";
@@ -102,7 +105,7 @@ function maintainScannerFocus() {
     const searchModalOpen = document.getElementById('search-modal').style.display === 'flex';
     const brakModalOpen = document.getElementById('brak-modal').style.display === 'flex';
 
-    if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !brakModalOpen && !isProcessing) {
+    if (currentView === 'task-panel' && !qtyModalOpen && !searchModalOpen && !brakModalOpen && !isProcessing && !isReviewMode) {
         hiddenInput.focus();
     } else {
         hiddenInput.blur();
@@ -141,6 +144,11 @@ function initHardwareScanner() {
 }
 
 function handleHardwareScan(scannedCode) {
+    if (isReviewMode) {
+        showError("PODGLĄD BRAKÓW - SKANOWANIE WYŁĄCZONE", true);
+        return;
+    }
+
     const code = scannedCode.trim();
     if (!code) return;
 
@@ -244,8 +252,10 @@ window.addEventListener('popstate', (event) => {
 
 function exitToDashboard() {
     stopIdleTimer();
+    isReviewMode = false;
     document.getElementById("header-main-row").style.display = "none";
     document.getElementById("global-progress-bar").style.display = "none";
+    document.getElementById("order-val").style.color = "var(--accent-green)";
     loadOrders();
     showView('view-orders-dashboard', false); 
     history.replaceState({ view: 'view-orders-dashboard' }, "", "#view-orders-dashboard");
@@ -270,6 +280,7 @@ function showOrderCompleteAnimation() {
 }
 
 function startIdleTimer(context) {
+    if (isReviewMode) return; // W podglądzie braków nie ponaglamy
     stopIdleTimer(); 
     currentIdleContext = context;
     idleTimer = setTimeout(() => {
@@ -415,20 +426,34 @@ function updateLockUI() {
 
     const manualAddBtn = document.getElementById('btn-manual-add');
     const labelText = document.getElementById('scanner-label-text');
-    const beam = document.querySelector('.neon-beam');
+    const beam = document.getElementById('neon-beam');
     
     if (manualAddBtn && labelText && beam) {
+        if (isReviewMode) {
+            manualAddBtn.disabled = true;
+            manualAddBtn.classList.remove('force-unlocked');
+            labelText.innerText = "TRYB PODGLĄDU BRAKÓW";
+            labelText.style.color = "var(--error)";
+            beam.style.animation = "none";
+            beam.style.stroke = "var(--error)";
+            beam.style.opacity = "0.5";
+            return;
+        }
+
         if (targetItem) {
             const hasEan = isEanValid(targetItem.ean);
             if (!hasEan) {
                 labelText.innerText = "BRAK KODU EAN";
                 labelText.style.color = "var(--error)";
+                beam.style.animation = "none";
                 beam.style.stroke = "var(--error)";
+                beam.style.opacity = "0.5";
                 manualAddBtn.disabled = false; 
                 manualAddBtn.classList.add('force-unlocked'); 
             } else {
                 labelText.innerText = "UŻYJ PRZYCISKU SKANOWANIA";
-                labelText.style.color = "rgba(255,255,255,0.3)";
+                labelText.style.color = "rgba(255,255,255,0.4)";
+                beam.style.animation = "camera-flash 1.5s infinite";
                 beam.style.stroke = "#ffffff";
                 manualAddBtn.disabled = !isManualUnlocked; 
                 manualAddBtn.classList.remove('force-unlocked');
@@ -767,11 +792,30 @@ function renderOrdersFromGlobal() {
         let fillBg = o.progress === 0 ? 'background: rgba(10, 132, 255, 0.4);' : (o.progress === 100 ? 'background: rgba(50, 215, 75, 0.6);' : `background: linear-gradient(90deg, hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 40%, 0.6), hsla(${40 + Math.floor((o.progress / 100) * 70)}, 100%, 45%, 0.9));`);
         
         const isCompleted = o.status === 'U';
+        const hasBrak = o.hasBrak === true; 
         const isFastTrack = (o.remPositions === 1); 
         
-        const baton = document.createElement("div");
-        baton.className = `order-baton ${isCompleted ? 'order-completed' : ''}`;
+        let batonClass = `order-baton`;
+        if (isCompleted && !hasBrak) batonClass += ` order-completed`;
+        if (isCompleted && hasBrak) batonClass += ` order-completed-brak`;
         
+        const baton = document.createElement("div");
+        baton.className = batonClass;
+        
+        let badgeHtml = `<div class="status-badge status-${o.status}">${o.status}</div>`;
+        if (isCompleted && hasBrak) {
+            badgeHtml = `<div class="status-badge status-B-warn">!</div>`;
+        }
+
+        let workloadText = '';
+        if (isCompleted && !hasBrak) {
+            workloadText = 'Gotowe';
+        } else if (isCompleted && hasBrak) {
+            workloadText = `<span style="color:var(--error);">Braki: ${o.brakPieces} szt.</span>`;
+        } else {
+            workloadText = `${o.remPositions} poz. (${o.remPieces} szt.)`;
+        }
+
         baton.innerHTML = `
             <div class="order-content">
                 <div class="order-header">
@@ -783,7 +827,7 @@ function renderOrdersFromGlobal() {
                         </div>
                         ${isFastTrack && !isCompleted ? '<span class="fast-track-icon">⚡</span>' : ''}
                     </div>
-                    <div class="status-badge status-${o.status}">${o.status}</div>
+                    ${badgeHtml}
                 </div>
 
                 <div class="order-details">
@@ -798,7 +842,7 @@ function renderOrdersFromGlobal() {
                               <path d="M12 13 L12 23" stroke="#fff" stroke-width="1.5"/>
                             </svg>
                         </div>
-                        <span>${isCompleted ? 'Gotowe' : `${o.remPositions} poz. (${o.remPieces} szt.)`}</span>
+                        <span>${workloadText}</span>
                     </div>
                     <div class="order-percent">${o.progress}%</div>
                 </div>
@@ -806,8 +850,12 @@ function renderOrdersFromGlobal() {
         `;
         
         baton.onclick = () => {
-            if (isCompleted) {
+            if (isCompleted && !hasBrak) {
                 showError("ZAMÓWIENIE ZAKOŃCZONE", true);
+                return;
+            }
+            if (isCompleted && hasBrak) {
+                startBrakReview(o.id);
                 return;
             }
             startOrder(o.id, o.remPositions);
@@ -823,9 +871,23 @@ function startOrder(id, itemsCount) {
 
     document.getElementById("header-main-row").style.display = "flex";
     document.getElementById("order-val").innerText = "Ładowanie..."; 
+    document.getElementById("order-val").style.color = "var(--accent-green)";
     document.getElementById("global-progress-bar").style.display = "block";
     speakVoice("Pozycji do uszykowania " + itemsCount); 
     fetchNext(0);
+}
+
+// NOWOŚĆ: Uruchomienie trybu przeglądu braków
+function startBrakReview(id) {
+    currentOrderID = id;
+    isReviewMode = true; 
+    
+    document.getElementById("header-main-row").style.display = "flex";
+    document.getElementById("order-val").innerHTML = `${id} <span style="font-size:12px;color:var(--error);">(BRAKI)</span>`;
+    document.getElementById("order-val").style.color = "var(--error)";
+    document.getElementById("global-progress-bar").style.display = "none";
+    
+    fetchBrakNext(0);
 }
 
 function setLoadingState(active) { 
@@ -897,7 +959,59 @@ async function fetchNext(offset) {
     } catch(e) { setLoadingState(false); showError("Błąd wyświetlania danych"); }
 }
 
-// LOGIKA NOWEGO PRZYCISKU BRAK v7.5
+// NOWOŚĆ: Pobieranie tylko pozycji brakujących v7.6
+async function fetchBrakNext(offset) {
+    stopIdleTimer(); showView('task-panel'); setLoadingState(true); 
+    try {
+        const res = await fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&action=get_brak&offset=${offset}`);
+        const data = await res.json();
+        
+        if(data.status === "error") { showError("SERWER: " + data.msg); setLoadingState(false); return; }
+
+        if(data.status === "next_brak") {
+            targetItem = data.item; currentOffset = data.current_offset;
+            
+            document.getElementById("task-lp").innerText = targetItem.lp; 
+            document.getElementById("task-name").innerText = targetItem.nazwa;
+            document.getElementById("task-kat").innerText = targetItem.nr_kat; 
+            document.getElementById("task-size").innerText = targetItem.rozmiar || "---";
+            
+            const card = document.getElementById("main-task-card");
+            card.classList.add('is-brak'); 
+
+            const qtyElem = document.getElementById("task-qty"), notesRow = document.getElementById("task-notes-row");
+            qtyElem.innerText = targetItem.pozostalo;
+            
+            if (targetItem.uwagi && targetItem.uwagi.trim() !== "") { 
+                document.getElementById("task-notes").innerText = targetItem.uwagi; notesRow.style.display = "block"; qtyElem.style.color = "var(--error)"; 
+            } else { notesRow.style.display = "none"; qtyElem.style.color = "var(--accent-green)"; }
+            
+            const navArea = document.getElementById("task-nav-area");
+            if (data.total_items <= 1) {
+                navArea.style.visibility = 'hidden';
+            } else {
+                navArea.style.visibility = 'visible';
+            }
+
+            const imgBox = document.getElementById("product-image-box"), imgElem = document.getElementById("task-img");
+            imgElem.src = "";
+            if(targetItem.nr_kat && targetItem.nr_kat !== "---") {
+                let formattedKat = String(targetItem.nr_kat).trim().replace(/\s+/g, '_').replace(/\./g, '_');
+                imgElem.onload = () => { imgBox.style.display = "flex"; }; imgElem.onerror = () => { imgBox.style.display = "none"; }; 
+                imgElem.src = IMAGE_BASE_URL + "1_" + formattedKat + ".jpg";
+            } else {
+                imgBox.style.display = "none";
+            }
+            updateLockUI();
+            setLoadingState(false);
+
+        } else {
+            // Jeżeli usunięto ostatni znacznik braku i nie ma już więcej B
+            exitToDashboard();
+        }
+    } catch(e) { setLoadingState(false); showError("Błąd wyświetlania braków"); }
+}
+
 document.getElementById('btn-mark-brak').onclick = () => {
     if (!targetItem) return;
     const isCurrentlyBrak = (targetItem.status === 'B');
@@ -921,7 +1035,11 @@ document.getElementById('btn-brak-confirm').onclick = () => {
     .then(r=>r.json())
     .then(res => {
         if(res.status === 'success') {
-            fetchNext(currentOffset);
+            if (isReviewMode) {
+                fetchBrakNext(currentOffset);
+            } else {
+                fetchNext(currentOffset);
+            }
         } else {
             setLoadingState(false);
             showError(res.msg);
@@ -1084,8 +1202,22 @@ document.getElementById("btn-logout").onclick = () => {
 };
 
 document.getElementById("btn-finish-icon").onclick = () => { 
-    exitToDashboard();
+    if (isReviewMode) {
+        exitToDashboard();
+    } else {
+        exitToDashboard();
+    }
 };
 
-document.getElementById("btn-prev").onclick = () => { if(!isProcessing) fetchNext(currentOffset - 1); };
-document.getElementById("btn-next").onclick = () => { if(!isProcessing) fetchNext(currentOffset + 1); };
+document.getElementById("btn-prev").onclick = () => { 
+    if(!isProcessing) {
+        if(isReviewMode) fetchBrakNext(currentOffset - 1);
+        else fetchNext(currentOffset - 1); 
+    }
+};
+document.getElementById("btn-next").onclick = () => { 
+    if(!isProcessing) {
+        if(isReviewMode) fetchBrakNext(currentOffset + 1);
+        else fetchNext(currentOffset + 1); 
+    }
+};
