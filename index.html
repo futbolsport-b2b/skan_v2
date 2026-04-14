@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v7.4</title>
+    <title>B2B TERMINAL v7.5</title>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="style.css?v=7.4">
+    <link rel="stylesheet" href="style.css?v=7.5">
     <link rel="manifest" href="manifest.json?v=7.4">
     <meta name="theme-color" content="#000000">
 </head>
@@ -36,7 +36,7 @@
             <div class="header-title-bar" id="header-title-bar">
                 <img src="logo.png" alt="Logo" id="header-logo">
                 <div class="header-status-group">
-                    <span class="version-text">v7.4</span>
+                    <span class="version-text">v7.5</span>
                     <div class="ios-status-icons">
                         <svg id="icon-wifi" class="status-icon-svg" viewBox="0 0 24 24">
                             <path d="M12 21l-12-11.65c1.1-1.25 4.89-4.85 12-4.85s10.9 3.6 12 4.85l-12 11.65z"/>
@@ -130,10 +130,14 @@
 
             <section id="task-panel" class="view-section" style="display:none;">
                 <div class="task-card" id="main-task-card">
-                    <div class="task-nav">
-                        <button id="btn-prev" class="btn-circle">◀</button>
-                        <span class="task-lp-info">POZYCJA <b id="task-lp">--</b></span>
-                        <button id="btn-next" class="btn-circle">▶</button>
+                    <div class="task-nav" id="task-nav-area">
+                        <button id="btn-prev" class="btn-nav-squircle">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        <span id="task-lp" class="task-lp-badge">--</span>
+                        <button id="btn-next" class="btn-nav-squircle">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
                     </div>
                     
                     <div class="task-content" id="product-data-area">
@@ -160,6 +164,8 @@
                             <span class="scanner-label" id="scanner-label-text">UŻYJ PRZYCISKU SKANOWANIA</span>
                         </div>
                         
+                        <button id="btn-mark-brak" class="btn-brak-trigger">B</button>
+                        
                         <button id="btn-manual-add" class="btn-manual-trigger" disabled>
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line><line x1="9" y1="15" x2="9.01" y2="15"></line><line x1="15" y1="15" x2="15.01" y2="15"></line></svg>
                         </button>
@@ -168,6 +174,18 @@
                 </div>
             </section>
         </main>
+
+        <div id="brak-modal" style="display:none;">
+            <div class="sheet" style="padding-top: 35px;">
+                <div class="sheet-header">
+                    <h2 id="brak-modal-text" style="font-size:22px; color: var(--error); margin-bottom: 25px;">CZY OZNACZYĆ PRODUKT JAKO BRAK?</h2>
+                </div>
+                <div class="modal-action-row">
+                    <button id="btn-brak-cancel" class="btn-cancel">NIE</button>
+                    <button id="btn-brak-confirm" class="btn-success" style="background: var(--error); color: #fff;">TAK</button>
+                </div>
+            </div>
+        </div>
 
         <div id="qty-modal" style="display:none;">
             <div class="sheet">
@@ -219,6 +237,6 @@
         <input type="text" id="hidden-scanner-input" class="hidden-scanner" inputmode="none" autocomplete="off" />
 
     </div>
-    <script src="app.js?v=7.4"></script>
+    <script src="app.js?v=7.5"></script>
 </body>
 </html>
