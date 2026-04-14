@@ -21,7 +21,7 @@ let currentIdleContext = null;
 let scanTimeout = null;
 
 // ==========================================
-// SYSTEM AUTORYZACJI PIN v7.3
+// SYSTEM AUTORYZACJI PIN v7.4
 // ==========================================
 const CORRECT_PIN = "62030";
 let enteredPin = "";
@@ -73,6 +73,7 @@ function verifyPin() {
     if (enteredPin === CORRECT_PIN) {
         document.getElementById('pin-dots').style.display = 'none';
         document.getElementById('pin-numpad').style.display = 'none';
+        document.getElementById('pin-title').style.display = 'none'; // Ukrywamy napis PODAJ PIN
         document.getElementById('pin-loader').style.display = 'flex';
         
         sessionStorage.setItem('devicePinAuthed', 'true');
@@ -438,11 +439,45 @@ document.getElementById('btn-manual-lock').onclick = function() {
     if (isManualUnlocked) speakVoice("Tryb ręcznego wprowadzania Aktywny");
 };
 
+// ==============================================================
+// MECHANIZM BLOKADY ODŚWIEŻANIA (RATE LIMIT 30s) v7.4
+// ==============================================================
+let refreshCooldownTimer = null;
+
 document.getElementById('btn-refresh-orders').onclick = async function() {
+    if (this.classList.contains('in-cooldown') || this.classList.contains('spin-anim')) return;
+
+    // Faza 1: Kręcenie / Pobieranie
     this.classList.add('spin-anim');
     await loadOrders();
     this.classList.remove('spin-anim');
+
+    // Faza 2: Zablokowanie przycisku na 30 sekund
+    this.classList.add('in-cooldown');
+    const svg = document.getElementById('refresh-svg');
+    const counter = document.getElementById('refresh-counter');
+    
+    svg.style.display = 'none';
+    counter.style.display = 'block';
+    
+    let timeLeft = 30;
+    counter.innerText = timeLeft;
+
+    refreshCooldownTimer = setInterval(() => {
+        timeLeft--;
+        if (timeLeft <= 0) {
+            clearInterval(refreshCooldownTimer);
+            refreshCooldownTimer = null;
+            this.classList.remove('in-cooldown');
+            svg.style.display = 'block';
+            counter.style.display = 'none';
+        } else {
+            counter.innerText = timeLeft;
+        }
+    }, 1000);
 };
+// ==============================================================
+
 
 window.onload = () => {
     updateNetworkStatus();
