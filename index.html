@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v7.0b</title>
+    <title>B2B TERMINAL v7.2</title>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="style.css?v=7.0d">
-    <link rel="manifest" href="manifest.json?v=7.1">
+    <link rel="stylesheet" href="style.css?v=7.2">
+    <link rel="manifest" href="manifest.json?v=7.2">
     <meta name="theme-color" content="#000000">
 </head>
 <body class="ean-mode">
@@ -32,11 +32,11 @@
     
     <div class="app-container">
         
-        <header id="main-header">
+        <header id="main-header" style="display: none;">
             <div class="header-title-bar" id="header-title-bar">
-                <img src="logo.png" alt="Logo" id="header-logo">
+                <img src="icon.png" alt="Logo" id="header-logo">
                 <div class="header-status-group">
-                    <span class="version-text">v7.0b</span>
+                    <span class="version-text">v7.2</span>
                     <div class="ios-status-icons">
                         <svg id="icon-wifi" class="status-icon-svg" viewBox="0 0 24 24">
                             <path d="M12 21l-12-11.65c1.1-1.25 4.89-4.85 12-4.85s10.9 3.6 12 4.85l-12 11.65z"/>
@@ -61,7 +61,31 @@
         </header>
 
         <main id="main-view">
-            <section id="view-user-selection" class="view-section" style="display: flex;">
+            <section id="view-pin-login" class="view-section" style="display: flex;">
+                <div class="pin-container">
+                    <img src="icon.png" alt="Logo" class="pin-logo">
+                    <h2 class="pin-title">AUTORYZACJA TERMINALA</h2>
+                    <div class="pin-dots" id="pin-dots">
+                        <div class="pin-dot"></div>
+                        <div class="pin-dot"></div>
+                        <div class="pin-dot"></div>
+                        <div class="pin-dot"></div>
+                        <div class="pin-dot"></div>
+                    </div>
+                    <div id="pin-loader" style="display: none;" class="loader-container">
+                        <div class="modern-spinner"></div>
+                        <div class="loader-text-small">ŁĄCZENIE Z BAZĄ...</div>
+                    </div>
+                    <div class="custom-numpad" id="pin-numpad" style="margin-top: 30px;">
+                        <button class="np-btn-pin" data-val="1">1</button><button class="np-btn-pin" data-val="2">2</button><button class="np-btn-pin" data-val="3">3</button>
+                        <button class="np-btn-pin" data-val="4">4</button><button class="np-btn-pin" data-val="5">5</button><button class="np-btn-pin" data-val="6">6</button>
+                        <button class="np-btn-pin" data-val="7">7</button><button class="np-btn-pin" data-val="8">8</button><button class="np-btn-pin" data-val="9">9</button>
+                        <button class="np-btn-pin np-action" id="np-pin-clear">C</button><button class="np-btn-pin" data-val="0">0</button><button class="np-btn-pin np-action" id="np-pin-del">⌫</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-user-selection" class="view-section" style="display: none;">
                 <div id="user-list" class="user-grid"></div>
             </section>
 
@@ -195,6 +219,6 @@
         <input type="text" id="hidden-scanner-input" class="hidden-scanner" inputmode="none" autocomplete="off" />
 
     </div>
-    <script src="app.js?v=7.0b"></script>
+    <script src="app.js?v=7.2"></script>
 </body>
 </html>
