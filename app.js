@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbws6A1TPzl01dpUmnd-nuR18AtphYPfUOLHO6cHMlEa3tjj-voiTV4DAjUnSJNlcoY/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzKtpd8_IyZ0CE_SUflSQu-cFSJUSiNKWlm6SNBi0d8RlyEyt3eaapySRxYY93NZ7sO/exec";
 const IMAGE_BASE_URL = "https://b2b.futbolsport.pl/gfx-base/s_1/gfx/products/big/"; 
 
 let currentUser = null, currentOrderID = null, targetItem = null;
@@ -810,7 +810,6 @@ function renderOrdersFromGlobal() {
         if (isCompleted && !hasBrak) {
             workloadText = 'Gotowe';
         } else if (isCompleted && hasBrak) {
-            // Dodano text-shadow do wersji 7.7
             workloadText = `<span style="color:var(--error); font-weight: 900; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Braki: ${o.brakPieces} szt.</span>`;
         } else {
             workloadText = `${o.remPositions} poz. (${o.remPieces} szt.)`;
@@ -1028,7 +1027,8 @@ document.getElementById('btn-brak-confirm').onclick = () => {
     const newState = !isCurrentlyBrak;
     
     setLoadingState(true);
-    fetch(`${SCRIPT_URL}?action=toggle_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&state=${newState}`)
+    // Przesyłamy rowIndex do bezpiecznej edycji v7.8
+    fetch(`${SCRIPT_URL}?action=toggle_brak&orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&state=${newState}`)
     .then(r=>r.json())
     .then(res => {
         if(res.status === 'success') {
@@ -1096,7 +1096,8 @@ function sendVal(q, mode) {
     btnOk.classList.add("is-loading"); btnOk.disabled = true;
 
     let qInt = parseInt(q);
-    fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&qty=${qInt}&mode=${mode}&action=validate`)
+    // Przesyłamy rowIndex do bezpiecznej weryfikacji v7.8
+    fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&qty=${qInt}&mode=${mode}&action=validate`)
     .then(res => res.json())
     .then(data => {
         btnOk.classList.remove("is-loading"); btnOk.disabled = false;
