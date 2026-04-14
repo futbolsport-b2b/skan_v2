@@ -1,4 +1,4 @@
-/* v7.5 OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH BRAK LOGIC & BIGGER UI */
+/* v7.6 OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH BRAK LOGIC & BIGGER UI */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -118,7 +118,10 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 /* BATON ZAMÓWIENIA */
 .order-baton { position: relative; background: var(--panel-bg); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 15px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; backdrop-filter: blur(10px); transition: transform 0.15s, opacity 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
 .order-baton:active { transform: scale(0.96); }
+
+/* NOWOŚĆ: Wygląd ukończonego zamówienia z brakami */
 .order-baton.order-completed { opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
+.order-baton.order-completed-brak { opacity: 0.9; border: 1px solid var(--error); box-shadow: inset 0 0 15px rgba(255, 69, 58, 0.15); filter: none; cursor: pointer; }
 
 .order-content { position: relative; width: 100%; display: flex; flex-direction: column; gap: 10px; }
 .order-header { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px;}
@@ -136,6 +139,8 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .status-N { background-color: var(--accent-blue); color: #fff; box-shadow: 0 0 10px rgba(10, 132, 255, 0.4); }
 .status-W { background-color: var(--accent-yellow); box-shadow: 0 0 10px rgba(255, 214, 10, 0.4); }
 .status-U { background-color: var(--accent-green); box-shadow: 0 0 10px rgba(50, 215, 75, 0.4); }
+/* Ostrzeżenie B */
+.status-B-warn { background-color: var(--error); color: #fff; box-shadow: 0 0 10px rgba(255, 69, 58, 0.5); font-size: 22px; font-weight: 900;}
 
 .order-details { display: flex; justify-content: space-between; align-items: center; width: 100%; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 12px; box-sizing: border-box; position: relative; overflow: hidden; }
 .order-details-progress-fill { position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; transition: width 0.8s ease; opacity: 0.9;}
@@ -143,8 +148,9 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .order-workload { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: #fff;}
 .order-box-icon { opacity: 0.8; display: flex; }
 .order-percent { font-size: 16px; font-weight: 900; opacity: 0.9; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+.order-completed-brak .order-percent { color: var(--error); }
 
-/* ELASTYCZNA KARTA PRODUKTU + LOGIKA BRAKÓW v7.5 */
+/* ELASTYCZNA KARTA PRODUKTU + LOGIKA BRAKÓW v7.6 */
 .task-card { background: var(--panel-bg); border-radius: 24px; padding: 15px; border: 2px solid var(--border-subtle); margin: 10px; text-align: center; backdrop-filter: blur(10px); display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; box-sizing: border-box; transition: background 0.3s, border-color 0.2s, box-shadow 0.2s;}
 
 .task-card.is-brak { background: rgba(255, 69, 58, 0.15); border-color: var(--error); box-shadow: inset 0 0 20px rgba(255, 69, 58, 0.2); }
@@ -156,7 +162,7 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
     50% { transform: translateX(8px); } 75% { transform: translateX(-8px); } 100% { transform: translateX(0); } 
 }
 
-/* NOWA NAWIGACJA (Duże przyciski Squircle) */
+/* NAWIGACJA (Duże przyciski Squircle) */
 .task-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0; }
 .btn-nav-squircle { width: 64px; height: 64px; border-radius: 22px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; display: flex; align-items: center; justify-content: center; transition: all 0.2s; cursor: pointer; }
 .btn-nav-squircle:active { background: rgba(255,255,255,0.2); transform: scale(0.95); }
