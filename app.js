@@ -23,8 +23,6 @@ let scanTimeout = null;
 let isReviewMode = false;
 let isActivelyReplenishing = false; 
 
-// V10.0: Zmienna sterująca głosem (Domyślnie włączone - false)
-// Przekreślony głośnik = muted. Jeśli chcesz, aby przy pierwszym uruchomieniu był wyciszony, daj true.
 let isSpeechMuted = true; 
 
 const CORRECT_PIN = "62030";
@@ -377,7 +375,7 @@ document.body.addEventListener('click', unlockAudioAPI, { once: true });
 document.body.addEventListener('touchstart', unlockAudioAPI, { once: true });
 
 function speakVoice(text) {
-    if (isSpeechMuted) return; // v10.0: Blokada gdy wyciszone
+    if (isSpeechMuted) return; 
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel(); 
         const utterance = new SpeechSynthesisUtterance(text);
@@ -1114,7 +1112,21 @@ document.getElementById('btn-brak-confirm').onclick = () => {
         .then(r=>r.json())
         .then(res => {
             if(res.status === 'success') {
-                fetchNext(currentOffset);
+                if (isReviewMode && isCurrentlyBrak) {
+                    targetItem.status = 'BU'; 
+                    document.getElementById("main-task-card").classList.remove('is-brak');
+                    setLoadingState(false);
+                    
+                    isManualUnlocked = true;
+                    sessionStorage.setItem('manualUnlock', 'true');
+                    updateLockUI(); 
+                    
+                    speakVoice("Uzupełnianie braku aktywne");
+                } else if (isReviewMode) {
+                    fetchBrakNext(currentOffset);
+                } else {
+                    fetchNext(currentOffset);
+                }
             } else {
                 setLoadingState(false);
                 showError(res.msg);
@@ -1169,18 +1181,24 @@ document.getElementById("btn-qty-cancel").onclick = () => {
     maintainScannerFocus(); 
 };
 
+// V10.1: Szybki zapis bez kółka ładowania - wyraźny komunikat
 function sendVal(q, mode) {
     stopIdleTimer(); 
     const btnOk = document.getElementById("btn-qty-ok");
     
-    // V10.0 Usunięto dodawanie klasy 'is-loading' do uniknięcia zawieszonej animacji
+    // V10.1 wizualne zablokowanie przycisku bez psującej się animacji
     btnOk.disabled = true;
+    btnOk.classList.add("is-saving");
+    const originalText = btnOk.innerText;
+    btnOk.innerText = "ZAPISYWANIE...";
 
     let qInt = parseInt(q);
     fetch(`${SCRIPT_URL}?orderID=${encodeURIComponent(currentOrderID)}&ean=${encodeURIComponent(targetItem.ean)}&rowIndex=${targetItem.rowIndex}&qty=${qInt}&mode=${mode}&action=validate`)
     .then(res => res.json())
     .then(data => {
         btnOk.disabled = false;
+        btnOk.classList.remove("is-saving");
+        btnOk.innerText = originalText;
         
         if(data.status === "success") {
             document.getElementById("qty-modal").style.display = "none";
@@ -1198,6 +1216,8 @@ function sendVal(q, mode) {
     })
     .catch(() => {
         btnOk.disabled = false;
+        btnOk.classList.remove("is-saving");
+        btnOk.innerText = originalText;
         showError("Błąd zapisu danych!");
     });
 }
