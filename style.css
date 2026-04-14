@@ -1,4 +1,4 @@
-/* v7.2 OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH PIN LOGIN & IOS UI */
+/* v7.3 OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH IOS PIN & UI */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -47,15 +47,39 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 
 #main-view { display: flex; flex-direction: column; flex-grow: 1; position: relative; overflow: hidden; }
 
-/* NOWOŚĆ: EKRAN LOGOWANIA PIN */
+/* NOWOŚĆ: EKRAN LOGOWANIA PIN - iOS Style */
 .pin-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center; }
-.pin-logo { width: 120px; height: auto; margin-bottom: 30px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)); }
-.pin-title { font-size: 20px; font-weight: 900; color: var(--text-secondary); letter-spacing: 2px; margin-bottom: 30px; text-transform: uppercase; }
-.pin-dots { display: flex; gap: 15px; margin-bottom: 20px; }
-.pin-dot { width: 20px; height: 20px; border: 2px solid var(--text-secondary); border-radius: 50%; transition: all 0.2s; }
-.pin-dot.filled { background-color: var(--text-primary); border-color: var(--text-primary); box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); }
-.np-btn-pin { height: 65px; font-size: 26px; font-weight: 800; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; cursor: pointer; transition: all 0.1s; display: flex; align-items: center; justify-content: center; }
-.np-btn-pin:active { background: rgba(255,255,255,0.2); transform: scale(0.9); }
+.pin-title { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 2px; margin-bottom: 25px; }
+.pin-dots { display: flex; gap: 15px; margin-bottom: 40px; }
+.pin-dot { width: 16px; height: 16px; border: 1.5px solid rgba(255, 255, 255, 0.5); border-radius: 50%; transition: all 0.2s; background: transparent; }
+.pin-dot.filled { background-color: #fff; border-color: #fff; }
+
+#pin-numpad.custom-numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 75px);
+    gap: 20px;
+    justify-content: center;
+}
+
+.np-btn-pin {
+    width: 75px;
+    height: 75px;
+    font-size: 32px;
+    font-weight: 300;
+    border-radius: 20px;
+    background: transparent;
+    border: 1.5px solid rgba(255, 255, 255, 0.8);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.np-btn-pin:active { background: rgba(255, 255, 255, 0.2); transform: scale(0.95); }
+.np-action-pin { border-color: rgba(255, 255, 255, 0.3); font-size: 24px; color: #fff; }
+
 .shake { animation: shake-animation 0.4s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes shake-animation {
     10%, 90% { transform: translate3d(-2px, 0, 0); }
@@ -153,14 +177,6 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .task-card.scan-success { border-color: var(--accent-green); box-shadow: 0 0 30px rgba(50, 215, 75, 0.4); }
 .task-card.scan-error { border-color: var(--error); box-shadow: 0 0 30px rgba(255, 69, 58, 0.5); animation: error-shake 0.4s; }
 
-@keyframes error-shake { 
-    0% { transform: translateX(0); } 
-    25% { transform: translateX(-8px); } 
-    50% { transform: translateX(8px); } 
-    75% { transform: translateX(-8px); } 
-    100% { transform: translateX(0); } 
-}
-
 .task-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
 .btn-circle { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 1px solid var(--border-subtle); color: #fff; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; cursor: pointer; }
 .btn-circle:active { background: rgba(255,255,255,0.3); }
@@ -170,7 +186,6 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 
 .task-action-row { flex-shrink: 0; display: flex; align-items: center; margin-top: 10px; width: 100%; gap: 12px; }
 
-/* Wskaźnik Neon Beam Scanner (Płaski, informacyjny) */
 .neon-scanner-container { flex-grow: 1; height: 60px; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px; background: transparent; border: none; }
 .neon-scanner-svg { width: 50px; height: 30px; }
 .scanner-frame { fill: none; stroke: var(--text-secondary); stroke-width: 3; opacity: 0.5; }
