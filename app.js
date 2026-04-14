@@ -20,6 +20,85 @@ let currentIdleContext = null;
 
 let scanTimeout = null;
 
+// ==========================================
+// SYSTEM AUTORYZACJI PIN v7.2
+// ==========================================
+const CORRECT_PIN = "62030";
+let enteredPin = "";
+
+function bindPinLogic() {
+    const isAuthed = sessionStorage.getItem('devicePinAuthed') === 'true';
+    if (isAuthed) {
+        document.getElementById('main-header').style.display = 'flex';
+        initApp();
+        return;
+    }
+
+    document.querySelectorAll('.np-btn-pin[data-val]').forEach(btn => {
+        btn.onclick = () => {
+            if (enteredPin.length < 5) {
+                enteredPin += btn.getAttribute('data-val');
+                updatePinVisuals();
+            }
+        };
+    });
+
+    document.getElementById('np-pin-clear').onclick = () => {
+        enteredPin = "";
+        updatePinVisuals();
+    };
+
+    document.getElementById('np-pin-del').onclick = () => {
+        enteredPin = enteredPin.slice(0, -1);
+        updatePinVisuals();
+    };
+}
+
+function updatePinVisuals() {
+    const dots = document.querySelectorAll('.pin-dot');
+    dots.forEach((dot, index) => {
+        if (index < enteredPin.length) {
+            dot.classList.add('filled');
+        } else {
+            dot.classList.remove('filled');
+        }
+    });
+
+    if (enteredPin.length === 5) {
+        verifyPin();
+    }
+}
+
+function verifyPin() {
+    if (enteredPin === CORRECT_PIN) {
+        // Poprawny PIN
+        document.getElementById('pin-dots').style.display = 'none';
+        document.getElementById('pin-numpad').style.display = 'none';
+        document.getElementById('pin-loader').style.display = 'flex';
+        
+        sessionStorage.setItem('devicePinAuthed', 'true');
+        
+        // Czas na płynną animację i "połączenie z QNAP"
+        setTimeout(() => {
+            document.getElementById('main-header').style.display = 'flex';
+            initApp();
+        }, 1800);
+        
+    } else {
+        // Błędny PIN
+        playSound('error');
+        const dotsContainer = document.getElementById('pin-dots');
+        dotsContainer.classList.add('shake');
+        
+        setTimeout(() => {
+            dotsContainer.classList.remove('shake');
+            enteredPin = "";
+            updatePinVisuals();
+        }, 500);
+    }
+}
+// ==========================================
+
 function maintainScannerFocus() {
     const hiddenInput = document.getElementById('hidden-scanner-input');
     if (!hiddenInput) return;
@@ -115,7 +194,7 @@ function triggerTaskPanelVisual(type) {
 }
 
 function getCurrentViewId() {
-    const views = ['view-user-selection', 'view-orders-dashboard', 'task-panel'];
+    const views = ['view-pin-login', 'view-user-selection', 'view-orders-dashboard', 'task-panel'];
     return views.find(v => document.getElementById(v).style.display === 'flex');
 }
 
@@ -170,23 +249,20 @@ function exitToDashboard() {
     setLoadingState(false);
 }
 
-// NOWOŚĆ: Funkcja wyświetlająca graficzne potwierdzenie i wracająca do dashboardu
 function showOrderCompleteAnimation() {
     stopIdleTimer();
     const overlay = document.getElementById('order-complete-overlay');
     overlay.style.display = 'flex';
     
-    // Force reflow
     void overlay.offsetWidth;
     overlay.classList.add('active');
     
-    // Auto-ukrycie i powrót po 2 sekundach
     setTimeout(() => {
         overlay.classList.remove('active');
         setTimeout(() => {
             overlay.style.display = 'none';
             exitToDashboard();
-        }, 300); // Czas na opacity transition
+        }, 300); 
     }, 2000);
 }
 
@@ -211,9 +287,9 @@ function stopIdleTimer() {
 function updateNetworkStatus() {
     const wifiIcon = document.getElementById('icon-wifi');
     if (navigator.onLine) {
-        wifiIcon.style.fill = 'var(--accent-green)';
+        if(wifiIcon) wifiIcon.style.fill = 'var(--accent-green)';
     } else {
-        wifiIcon.style.fill = 'var(--error)';
+        if(wifiIcon) wifiIcon.style.fill = 'var(--error)';
         showError("Brak połączenia z internetem!", true);
     }
 }
@@ -375,7 +451,7 @@ window.onload = () => {
     updateNetworkStatus();
     updateLockUI();
     initHardwareScanner(); 
-    initApp();
+    bindPinLogic(); 
 };
 
 const MALE_COLORS = [
@@ -422,7 +498,7 @@ async function initApp() {
     showView('view-user-selection', false);
     history.replaceState({ view: 'view-user-selection' }, "", "#view-user-selection");
     
-    document.getElementById("user-list").innerHTML = `<div class="loader-container"><div class="modern-spinner"></div><div class="loader-text-small">Autoryzacja...</div></div>`;
+    document.getElementById("user-list").innerHTML = `<div class="loader-container"><div class="modern-spinner"></div><div class="loader-text-small">Pobieranie Bazy...</div></div>`;
     
     try {
         const resp = await fetch(`${SCRIPT_URL}?action=get_users`);
@@ -770,7 +846,6 @@ async function fetchNext(offset) {
             setTimeout(() => { startIdleTimer('scan'); }, 500);
 
         } else {
-            // ZAMIAST ALERTU() URUCHAMIAMY NOWĄ ANIMACJĘ
             playSound('success'); 
             speakVoice("Zamówienie kompletne!"); 
             showOrderCompleteAnimation();
@@ -880,18 +955,18 @@ function showView(id, pushToHistory = true) {
     stopIdleTimer(); 
     const currentView = getCurrentViewId();
     
-    ['view-user-selection', 'view-orders-dashboard', 'task-panel'].forEach(v => { 
+    ['view-pin-login', 'view-user-selection', 'view-orders-dashboard', 'task-panel'].forEach(v => { 
         document.getElementById(v).style.display = (v === id) ? 'flex' : 'none'; 
     });
     
     const titleBar = document.getElementById('header-title-bar');
-    if (id === 'task-panel') {
+    if (id === 'task-panel' || id === 'view-pin-login') {
         titleBar.style.display = 'none'; 
     } else {
         titleBar.style.display = 'flex'; 
     }
 
-    if (pushToHistory && currentView !== id) {
+    if (pushToHistory && currentView !== id && id !== 'view-pin-login') {
         history.pushState({ view: id }, "", "#" + id);
     }
     
@@ -922,6 +997,10 @@ document.getElementById("btn-logout").onclick = () => {
     stopIdleTimer(); 
     document.getElementById("header-main-row").style.display = "none"; 
     document.getElementById("global-progress-bar").style.display = "none"; 
+    
+    // Zamiast wracać do autoryzacji PIN, wylogowanie z użytkownika wraca do listy operatorów
+    document.getElementById("user-list").innerHTML = `<div class="loader-container"><div class="modern-spinner"></div><div class="loader-text-small">Pobieranie Bazy...</div></div>`;
+    showView('view-user-selection', false);
     initApp(); 
 };
 
