@@ -1,4 +1,4 @@
-/* v7.11 OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH FINAL BRAK DB LOGIC */
+/* v7.12 OPTIMIZED FOR HARDWARE SCANNER TERMINALS WITH FINAL BRAK DB LOGIC AND AUTO-RE-LOCK */
 :root { 
     --bg-dark: #000000; --panel-bg: rgba(28, 28, 30, 0.7);
     --accent-blue: #0A84FF; --accent-yellow: #FFD60A; --accent-green: #32D74B;
@@ -186,7 +186,6 @@ header { padding: calc(env(safe-area-inset-top) + 12px) 20px 12px; background: r
 .btn-brak-trigger { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--error); color: var(--error); font-size: 28px; font-weight: 900; display:flex; align-items:center; justify-content:center; background: transparent; cursor: pointer; transition: all 0.2s; flex-shrink: 0;}
 .btn-brak-trigger:active { transform: scale(0.9); background: rgba(255,69,58,0.15); }
 
-/* Wersja 7.11 - Pulsująca zachęta do uzupełnienia */
 .is-brak .btn-brak-trigger { animation: brak-btn-breathe 1.5s infinite alternate; }
 
 @keyframes brak-btn-breathe {
