@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>B2B TERMINAL v9.0</title>
+    <title>B2B TERMINAL v10.0</title>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="style.css?v=9.0">
-    <link rel="manifest" href="manifest.json?v=9.0">
+    <link rel="stylesheet" href="style.css?v=10.0">
+    <link rel="manifest" href="manifest.json?v=10.0">
     <meta name="theme-color" content="#000000">
 </head>
 <body class="ean-mode">
@@ -36,7 +36,7 @@
             <div class="header-title-bar" id="header-title-bar">
                 <img src="logo.png" alt="Logo" id="header-logo">
                 <div class="header-status-group">
-                    <span class="version-text">v9.0</span>
+                    <span class="version-text">v10.0</span>
                     <div class="ios-status-icons">
                         <svg id="icon-wifi" class="status-icon-svg" viewBox="0 0 24 24">
                             <path d="M12 21l-12-11.65c1.1-1.25 4.89-4.85 12-4.85s10.9 3.6 12 4.85l-12 11.65z"/>
@@ -90,7 +90,7 @@
 
             <section id="view-orders-dashboard" class="view-section" style="display:none;">
                 <div class="dashboard-ctrl">
-                    <button id="btn-logout" class="btn-icon-modern">
+                    <button id="btn-logout" class="btn-icon-modern btn-logout-red">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 5 12 10 7"></polyline><line x1="19" y1="12" x2="5" y2="12"></line></svg>
                     </button>
                     
@@ -109,6 +109,11 @@
                         <button id="btn-manual-lock" class="btn-icon-modern lock-btn">
                             <svg id="icon-lock-closed" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                             <svg id="icon-lock-open" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+                        </button>
+                        
+                        <button id="btn-mute-toggle" class="btn-icon-modern">
+                            <svg id="icon-speaker-off" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                            <svg id="icon-speaker-on" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
                         </button>
                     </div>
                 </div>
@@ -239,6 +244,6 @@
         <input type="text" id="hidden-scanner-input" class="hidden-scanner" inputmode="none" autocomplete="off" />
 
     </div>
-    <script src="app.js?v=9.0"></script>
+    <script src="app.js?v=10.0"></script>
 </body>
 </html>
